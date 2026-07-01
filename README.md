@@ -2,7 +2,7 @@
 
 
 
-An online ordering and order management system for an independent takeaway restaurant. Built as a portfolio project by a pre-university student. The system will be deployed and used by a real business — my parents' takeaway — replacing telephone-only ordering with a live web platform.
+An online ordering and order management system for an independent takeaway restaurant. Built as a portfolio project by a pre-university student. The system will be deployed and used by a real business replacing telephone-only ordering with a live web platform.
 
 
 
