@@ -12,7 +12,11 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 builder.Services.AddScoped<ICategoryService, CategoryService>(); 
-// Register the CategoryService with the DI container, so that it can be injected into controllers or other services that require it.
+builder.Services.AddScoped<IMenuItemService, MenuItemService>();
+// Register the XService with the DI container, so that it can be injected into controllers or other services that require it.
+
+
+
 
 var app = builder.Build();
 
