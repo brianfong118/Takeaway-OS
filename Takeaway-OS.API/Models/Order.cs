@@ -7,7 +7,7 @@ public class Order
     public string CustomerPhone { get; set; } = string.Empty;
     public string DeliveryAddress { get; set; } = string.Empty;
     public string OrderType { get; set; } = string.Empty;
-    public string Status { get; set; } = "Pending";
+    public OrderStatus Status { get; set; } = OrderStatus.Pending;
     public string Notes { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 

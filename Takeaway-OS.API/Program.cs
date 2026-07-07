@@ -1,10 +1,13 @@
 using Microsoft.EntityFrameworkCore;
 using Takeaway_OS.API.Data;
 using Takeaway_OS.API.Services; 
+using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
@@ -14,10 +17,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 builder.Services.AddScoped<ICategoryService, CategoryService>(); 
 builder.Services.AddScoped<IMenuItemService, MenuItemService>();
 builder.Services.AddScoped<IDriverService, DriverService>();
-// Register the XService with the DI container, so that it can be injected into controllers or other services that require it.
-
-
-
+// Register the "X"Service with the DI container, so that it can be injected into controllers or other services that require it.
 
 var app = builder.Build();
 
