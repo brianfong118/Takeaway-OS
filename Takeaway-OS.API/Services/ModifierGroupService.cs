@@ -102,13 +102,24 @@ public class ModifierGroupService : IModifierGroupService
         return true;
     }
 
-    public async Task<bool> DeleteAsync(int id)
+    public async Task<DeleteResult> DeleteAsync(int id)
     {
         var group = await _context.ModifierGroups.FindAsync(id);
-        if (group is null) return false;
+        if (group is null) return DeleteResult.NotFound;
 
         _context.ModifierGroups.Remove(group);
-        await _context.SaveChangesAsync();
-        return true;
+
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateException)
+        {
+            // Blocked by the Restrict FK on ModifierOptions and/or MenuItemModifierGroups
+            // still pointing at this group (see AppDbContext.OnModelCreating).
+            return DeleteResult.HasDependents;
+        }
+
+        return DeleteResult.Success;
     }
 }

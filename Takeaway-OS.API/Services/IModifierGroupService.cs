@@ -8,5 +8,8 @@ public interface IModifierGroupService
     Task<ModifierGroupDto?> GetByIdAsync(int id);
     Task<ModifierGroupDto> CreateAsync(ModifierGroupCreateDto dto);
     Task<bool> UpdateAsync(int id, ModifierGroupUpdateDto dto);
-    Task<bool> DeleteAsync(int id);
+
+    Task<DeleteResult> DeleteAsync(int id);
+    // DeleteResult, not bool: blocked (409) if the group still has ModifierOptions or is still
+    // linked to a MenuItem, same reasoning as ICategoryService.DeleteAsync.
 }

@@ -17,8 +17,9 @@ public interface ICategoryService // Interface for category service
     // returns the created category as a CategoryDto w/ Id assigned by the database
 
     Task<bool> UpdateAsync(int id, CategoryUpdateDto dto);
-    Task<bool> DeleteAsync(int id);
-    // return true/false to tell the controller whether the thing existed and was updated/deleted
-    // so the controller can decide between NoContent() (success) or NotFound().
-    
+
+    Task<DeleteResult> DeleteAsync(int id);
+    // DeleteResult, not bool: a delete can fail two different ways 
+    // not found vs blocked by MenuItems still in this Category 
+    // Controller needs to tell those apart
 }

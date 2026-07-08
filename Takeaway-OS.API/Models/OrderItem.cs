@@ -10,4 +10,6 @@ public class OrderItem
     public string Notes { get; set; } = string.Empty;
 
     public Order Order { get; set; } = null!;
+    public ICollection<OrderItemModifier> OrderItemModifiers { get; set; } = new List<OrderItemModifier>();
+    // One OrderItem -> many snapshotted modifier selections
 }

@@ -48,8 +48,13 @@ public class CategoriesController : ControllerBase
     [HttpDelete("{id}")] // maps method to DELETE /api/categories/{id}
     public async Task<IActionResult> Delete(int id)
     {
-        var deleted = await _categoryService.DeleteAsync(id);
-        if (!deleted) return NotFound();
-        return NoContent();
+        var result = await _categoryService.DeleteAsync(id);
+
+        return result switch
+        {
+            DeleteResult.NotFound => NotFound(),
+            DeleteResult.HasDependents => Conflict($"Category {id} still has MenuItems. Delete or reassign them first."), // 409
+            _ => NoContent()
+        };
     }
 }

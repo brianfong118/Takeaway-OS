@@ -47,8 +47,13 @@ public class ModifierGroupsController : ControllerBase
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(int id)
     {
-        var deleted = await _modifierGroupService.DeleteAsync(id);
-        if (!deleted) return NotFound();
-        return NoContent();
+        var result = await _modifierGroupService.DeleteAsync(id);
+
+        return result switch
+        {
+            DeleteResult.NotFound => NotFound(),
+            DeleteResult.HasDependents => Conflict($"ModifierGroup {id} still has ModifierOptions or is still linked to a MenuItem. Delete/unlink them first."), // 409
+            _ => NoContent()
+        };
     }
 }

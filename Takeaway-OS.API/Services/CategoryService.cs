@@ -75,13 +75,24 @@ public class CategoryService : ICategoryService
         return true;
     }
 
-    public async Task<bool> DeleteAsync(int id)
+    public async Task<DeleteResult> DeleteAsync(int id)
     {
         var category = await _context.Categories.FindAsync(id);
-        if (category is null) return false;
+        if (category is null) return DeleteResult.NotFound;
 
         _context.Categories.Remove(category);
-        await _context.SaveChangesAsync(); // SaveChangesAsync persists the changes to the database
-        return true;
+
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateException)
+        {
+            // Postgres rejected the delete because the Restrict FK found MenuItems still
+            // pointing at this Category (see AppDbContext.OnModelCreating).
+            return DeleteResult.HasDependents;
+        }
+
+        return DeleteResult.Success;
     }
 }
