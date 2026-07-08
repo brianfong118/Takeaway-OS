@@ -10,4 +10,5 @@ public class MenuItem
     public bool IsAvailable { get; set; } = true;
 
     public Category Category { get; set; } = null!;
+    public ICollection<MenuItemModifierGroup> MenuItemModifierGroups { get; set; } = new List<MenuItemModifierGroup>();
 }

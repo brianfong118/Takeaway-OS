@@ -12,6 +12,9 @@ public class AppDbContext : DbContext
     public DbSet<Order> Orders { get; set; }
     public DbSet<OrderItem> OrderItems { get; set; }
     public DbSet<Driver> Drivers { get; set; }
+    public DbSet<ModifierGroup> ModifierGroups { get; set; }
+    public DbSet<ModifierOption> ModifierOptions { get; set; }
+    public DbSet<MenuItemModifierGroup> MenuItemModifierGroups { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

@@ -17,6 +17,9 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 builder.Services.AddScoped<ICategoryService, CategoryService>(); 
 builder.Services.AddScoped<IMenuItemService, MenuItemService>();
 builder.Services.AddScoped<IDriverService, DriverService>();
+builder.Services.AddScoped<IModifierGroupService, ModifierGroupService>();
+builder.Services.AddScoped<IModifierOptionService, ModifierOptionService>();
+builder.Services.AddScoped<IMenuItemModifierGroupService, MenuItemModifierGroupService>();
 // Register the "X"Service with the DI container, so that it can be injected into controllers or other services that require it.
 
 var app = builder.Build();
