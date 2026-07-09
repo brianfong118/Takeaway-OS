@@ -1,9 +1,14 @@
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Takeaway_OS.API.Models;
 
 namespace Takeaway_OS.API.Data;
 
-public class AppDbContext : DbContext
+// IdentityDbContext<ApplicationUser, IdentityRole<int>, int> adds the Identity tables
+// (Users, Roles, UserRoles, UserClaims, UserLogins, UserTokens, RoleClaims) on top of
+// everything DbContext already gives us - same database, same context, one set of migrations.
+public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<int>, int>
 {
     public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 
@@ -16,9 +21,33 @@ public class AppDbContext : DbContext
     public DbSet<ModifierGroup> ModifierGroups { get; set; }
     public DbSet<ModifierOption> ModifierOptions { get; set; }
     public DbSet<MenuItemModifierGroup> MenuItemModifierGroups { get; set; }
+    public DbSet<Customer> Customers { get; set; }
+    public DbSet<Address> Addresses { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        // Must run first - this is what actually builds the AspNetUsers/AspNetRoles/etc. tables.
+        base.OnModelCreating(modelBuilder);
+
+        // Driver/Customer are 1:1 with ApplicationUser. A unique index on the FK is what
+        // actually enforces "one login, one profile" at the database level - without it,
+        // EF would happily let two Drivers point at the same ApplicationUserId.
+        modelBuilder.Entity<Driver>()
+            .HasOne(d => d.ApplicationUser)
+            .WithOne()
+            .HasForeignKey<Driver>(d => d.ApplicationUserId);
+        modelBuilder.Entity<Driver>()
+            .HasIndex(d => d.ApplicationUserId)
+            .IsUnique();
+
+        modelBuilder.Entity<Customer>()
+            .HasOne(c => c.ApplicationUser)
+            .WithOne()
+            .HasForeignKey<Customer>(c => c.ApplicationUserId);
+        modelBuilder.Entity<Customer>()
+            .HasIndex(c => c.ApplicationUserId)
+            .IsUnique();
+
         modelBuilder.Entity<Order>()
             .Property(o => o.Status)
             .HasConversion<string>();
@@ -26,6 +55,7 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<Order>()
             .Property(o => o.OrderType)
             .HasConversion<string>();
+
 
         // Both FKs below are required (non-nullable)
         // Therefore EF Core's default would be Cascade 
