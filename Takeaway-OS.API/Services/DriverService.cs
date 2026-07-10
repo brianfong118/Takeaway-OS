@@ -41,27 +41,6 @@ public class DriverService : IDriverService
         };
     }
 
-    public async Task<DriverDto> CreateAsync(DriverCreateDto dto)
-    {
-        var driver = new Driver
-        {
-            Name = dto.Name,
-            Phone = dto.Phone,
-            IsAvailable = dto.IsAvailable
-        };
-
-        _context.Drivers.Add(driver);
-        await _context.SaveChangesAsync();
-
-        return new DriverDto
-        {
-            Id = driver.Id,
-            Name = driver.Name,
-            Phone = driver.Phone,
-            IsAvailable = driver.IsAvailable
-        };
-    }
-
     public async Task<bool> UpdateAsync(int id, DriverUpdateDto dto)
     {
         var driver = await _context.Drivers.FindAsync(id);

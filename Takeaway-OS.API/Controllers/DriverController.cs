@@ -29,12 +29,8 @@ public class DriversController : ControllerBase
         return Ok(driver);
     }
 
-    [HttpPost]
-    public async Task<ActionResult<DriverDto>> Create(DriverCreateDto dto)
-    {
-        var created = await _driverService.CreateAsync(dto);
-        return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
-    }
+    // No POST here -> Driver is created via POST /api/auth/register (role: "Driver"),
+    // which creates the ApplicationUser login and this profile row together.
 
     [HttpPut("{id}")]
     public async Task<IActionResult> Update(int id, DriverUpdateDto dto)

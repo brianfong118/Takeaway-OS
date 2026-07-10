@@ -8,12 +8,8 @@ public class DriverDto
     public bool IsAvailable { get; set; }
 }
 
-public class DriverCreateDto
-{
-    public string Name { get; set; } = string.Empty;
-    public string Phone { get; set; } = string.Empty;
-    public bool IsAvailable { get; set; } = true;
-}
+// No DriverCreateDto - Drivers are created via POST /api/auth/register (role: "Driver")
+// see RegisterRequest in AuthDto.cs.
 
 public class DriverUpdateDto
 {
