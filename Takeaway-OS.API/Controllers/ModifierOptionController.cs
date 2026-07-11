@@ -1,5 +1,7 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Takeaway_OS.API.DTOs;
+using Takeaway_OS.API.Models;
 using Takeaway_OS.API.Services;
 
 namespace Takeaway_OS.API.Controllers;
@@ -30,6 +32,7 @@ public class ModifierOptionsController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Roles = Roles.Owner)]
     public async Task<ActionResult<ModifierOptionDto>> Create(ModifierOptionCreateDto dto)
     {
         var created = await _modifierOptionService.CreateAsync(dto);
@@ -40,6 +43,7 @@ public class ModifierOptionsController : ControllerBase
     }
 
     [HttpPut("{id}")]
+    [Authorize(Roles = Roles.Owner)]
     public async Task<IActionResult> Update(int id, ModifierOptionUpdateDto dto)
     {
         var result = await _modifierOptionService.UpdateAsync(id, dto);
@@ -53,6 +57,7 @@ public class ModifierOptionsController : ControllerBase
     }
 
     [HttpDelete("{id}")]
+    [Authorize(Roles = Roles.Owner)]
     public async Task<IActionResult> Delete(int id)
     {
         var deleted = await _modifierOptionService.DeleteAsync(id);

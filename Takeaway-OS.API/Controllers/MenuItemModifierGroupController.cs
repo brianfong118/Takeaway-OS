@@ -1,10 +1,13 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Takeaway_OS.API.Models;
 using Takeaway_OS.API.Services;
 
 namespace Takeaway_OS.API.Controllers;
 
 [ApiController]
 [Route("api/menuitems/{menuItemId}/modifiergroups")]
+[Authorize(Roles = Roles.Owner)] // linking/unlinking modifier groups is menu management, Owner-only
 public class MenuItemModifierGroupsController : ControllerBase
 {
     private readonly IMenuItemModifierGroupService _linkService;

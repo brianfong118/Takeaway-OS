@@ -1,5 +1,7 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Takeaway_OS.API.DTOs;
+using Takeaway_OS.API.Models;
 using Takeaway_OS.API.Services;
 
 namespace Takeaway_OS.API.Controllers;
@@ -30,6 +32,7 @@ public class MenuItemsController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Roles = Roles.Owner)]
     public async Task<ActionResult<MenuItemDto>> Create(MenuItemCreateDto dto)
     {
         var created = await _menuItemService.CreateAsync(dto);
@@ -40,6 +43,7 @@ public class MenuItemsController : ControllerBase
     }
 
     [HttpPut("{id}")]
+    [Authorize(Roles = Roles.Owner)]
     public async Task<IActionResult> Update(int id, MenuItemUpdateDto dto)
     {
         var result = await _menuItemService.UpdateAsync(id, dto);
@@ -53,6 +57,7 @@ public class MenuItemsController : ControllerBase
     }
 
     [HttpDelete("{id}")]
+    [Authorize(Roles = Roles.Owner)]
     public async Task<IActionResult> Delete(int id)
     {
         var deleted = await _menuItemService.DeleteAsync(id);

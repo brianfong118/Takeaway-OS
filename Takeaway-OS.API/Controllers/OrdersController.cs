@@ -1,5 +1,7 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Takeaway_OS.API.DTOs;
+using Takeaway_OS.API.Models;
 using Takeaway_OS.API.Services;
 
 namespace Takeaway_OS.API.Controllers;
@@ -16,12 +18,14 @@ public class OrdersController : ControllerBase
     }
 
     [HttpGet]
+    [Authorize(Roles = Roles.Owner)] // no per-customer order-history scoping exists yet, so this stays Owner-only to avoid leaking other customers' orders
     public async Task<ActionResult<List<OrderDto>>> GetAll()
     {
         return Ok(await _orderService.GetAllAsync());
     }
 
     [HttpGet("{id}")]
+    [Authorize(Roles = Roles.Owner)]
     public async Task<ActionResult<OrderDto>> GetById(int id)
     {
         var order = await _orderService.GetByIdAsync(id);
@@ -30,6 +34,7 @@ public class OrdersController : ControllerBase
     }
 
     [HttpPost]
+    [AllowAnonymous] // guest checkout must stay open; logged-in customers also hit this same endpoint
     public async Task<ActionResult<OrderDto>> Create(OrderCreateDto dto)
     {
         var result = await _orderService.CreateAsync(dto);
@@ -42,6 +47,7 @@ public class OrdersController : ControllerBase
     // Separate, narrow endpoint for status changes only  
     // matches OrderStatusUpdateDto having no other editable fields (see DTOs/OrderDto.cs).
     [HttpPut("{id}/status")]
+    [Authorize(Roles = Roles.Owner)]
     public async Task<IActionResult> UpdateStatus(int id, OrderStatusUpdateDto dto)
     {
         var result = await _orderService.UpdateStatusAsync(id, dto);

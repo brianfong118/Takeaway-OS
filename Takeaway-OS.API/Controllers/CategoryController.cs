@@ -1,5 +1,7 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Takeaway_OS.API.DTOs;
+using Takeaway_OS.API.Models;
 using Takeaway_OS.API.Services;
 
 namespace Takeaway_OS.API.Controllers;
@@ -31,6 +33,7 @@ public class CategoriesController : ControllerBase
     }
 
     [HttpPost] // maps method to POST /api/categories
+    [Authorize(Roles = Roles.Owner)] // menu management is Owner-only
     public async Task<ActionResult<CategoryDto>> Create(CategoryCreateDto dto) // accepts a CategoryCreateDto object from the request body bcuz of [ApiController] attribute, which automatically binds JSON in the request body to the dto parameter
     {
         var created = await _categoryService.CreateAsync(dto);
@@ -38,6 +41,7 @@ public class CategoriesController : ControllerBase
     }
 
     [HttpPut("{id}")] // maps method to PUT /api/categories/{id}
+    [Authorize(Roles = Roles.Owner)]
     public async Task<IActionResult> Update(int id, CategoryUpdateDto dto) // IActionResult -> because the method doesn't return any data, just a status code (204 No Content or 404 Not Found)
     {
         var updated = await _categoryService.UpdateAsync(id, dto);
@@ -46,6 +50,7 @@ public class CategoriesController : ControllerBase
     }
 
     [HttpDelete("{id}")] // maps method to DELETE /api/categories/{id}
+    [Authorize(Roles = Roles.Owner)]
     public async Task<IActionResult> Delete(int id)
     {
         var result = await _categoryService.DeleteAsync(id);

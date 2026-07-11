@@ -1,5 +1,7 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Takeaway_OS.API.DTOs;
+using Takeaway_OS.API.Models;
 using Takeaway_OS.API.Services;
 
 namespace Takeaway_OS.API.Controllers;
@@ -30,6 +32,7 @@ public class ModifierGroupsController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Roles = Roles.Owner)]
     public async Task<ActionResult<ModifierGroupDto>> Create(ModifierGroupCreateDto dto)
     {
         var created = await _modifierGroupService.CreateAsync(dto);
@@ -37,6 +40,7 @@ public class ModifierGroupsController : ControllerBase
     }
 
     [HttpPut("{id}")]
+    [Authorize(Roles = Roles.Owner)]
     public async Task<IActionResult> Update(int id, ModifierGroupUpdateDto dto)
     {
         var updated = await _modifierGroupService.UpdateAsync(id, dto);
@@ -45,6 +49,7 @@ public class ModifierGroupsController : ControllerBase
     }
 
     [HttpDelete("{id}")]
+    [Authorize(Roles = Roles.Owner)]
     public async Task<IActionResult> Delete(int id)
     {
         var result = await _modifierGroupService.DeleteAsync(id);
