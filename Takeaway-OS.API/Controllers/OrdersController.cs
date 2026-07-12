@@ -39,6 +39,9 @@ public class OrdersController : ControllerBase
     {
         var result = await _orderService.CreateAsync(dto);
 
+        // Checked before the generic failure below: "we're closed" is a 409, not a 400.
+        if (result.RestaurantClosed) return Conflict(result.Error);
+
         if (result.Order is null) return BadRequest(result.Error); // Error is always set when Order is null
 
         return CreatedAtAction(nameof(GetById), new { id = result.Order.Id }, result.Order);

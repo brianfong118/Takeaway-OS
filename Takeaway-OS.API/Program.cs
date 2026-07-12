@@ -75,6 +75,7 @@ builder.Services.AddScoped<IModifierOptionService, ModifierOptionService>();
 builder.Services.AddScoped<IMenuItemModifierGroupService, MenuItemModifierGroupService>();
 builder.Services.AddScoped<IOrderService, OrderService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IBusinessHoursService, BusinessHoursService>();
 // Register the "X"Service with the DI container, so that it can be injected into controllers or other services that require it.
 
 var app = builder.Build();

@@ -8,9 +8,12 @@ namespace Takeaway_OS.API.Services;
 public class OrderService : IOrderService
 {
     private readonly AppDbContext _context;
-    public OrderService(AppDbContext context)
+    private readonly IBusinessHoursService _businessHoursService;
+
+    public OrderService(AppDbContext context, IBusinessHoursService businessHoursService)
     {
         _context = context;
+        _businessHoursService = businessHoursService;
     }
 
     public async Task<List<OrderDto>> GetAllAsync()
@@ -35,8 +38,9 @@ public class OrderService : IOrderService
 
     public async Task<OrderCreateResult> CreateAsync(OrderCreateDto dto)
     {
-        // NOTE: no business-hours check here yet — deliberately stubbed as "always open" for this
-        // first pass. Revisit once OpeningHours exists.
+        var status = await _businessHoursService.GetStatusAsync();
+        if (!status.IsOpen)
+            return new OrderCreateResult { Error = status.Message, RestaurantClosed = true }; // 409, not 400 — see OrderCreateResult
 
         if (dto.Items.Count == 0)
             return new OrderCreateResult { Error = "Order must contain at least one item." };

@@ -4,13 +4,18 @@ namespace Takeaway_OS.API.Services;
 
 // Wraps CreateAsync's outcome
 // Order-creation touches MenuItems, ModifierOptions, ModifierGroups all at once,
-// therefore several distinct ways it can fail 
-// but every one of them means the same thing to the controller (400 Bad Request),
-// so a single Error message is enough -> No enum needed 
+// therefore several distinct ways it can fail
+// but all the *validation* failures mean the same thing to the controller (400 Bad Request),
+// so a single Error message covers them -> No enum needed
 public class OrderCreateResult
 {
-    public OrderDto? Order { get; set; }   // null = validation failed, see Error
+    public OrderDto? Order { get; set; }   // null = order refused, see Error
     public string? Error { get; set; }     // set only when Order is null
+
+    // The one refusal that ISN'T a 400: the basket is perfectly valid, but shop closed.
+    // maps to 409 Conflict instead
+    // A bool rather than an enum because closed-vs-invalid is the only split that exists.
+    public bool RestaurantClosed { get; set; }
 }
 
 // UpdateStatusAsync's outcome DOES need an enum: OrderNotFound (404) and

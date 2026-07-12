@@ -23,15 +23,17 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<int>
     public DbSet<MenuItemModifierGroup> MenuItemModifierGroups { get; set; }
     public DbSet<Customer> Customers { get; set; }
     public DbSet<Address> Addresses { get; set; }
+    public DbSet<OpeningHours> OpeningHours { get; set; }
+    public DbSet<RestaurantSettings> RestaurantSettings { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         // Must run first - this is what actually builds the AspNetUsers/AspNetRoles/etc. tables.
         base.OnModelCreating(modelBuilder);
 
-        // Driver/Customer are 1:1 with ApplicationUser. A unique index on the FK is what
-        // actually enforces "one login, one profile" at the database level - without it,
-        // EF would happily let two Drivers point at the same ApplicationUserId.
+        // Driver/Customer are 1:1 with ApplicationUser
+        // Unique index on the FK enforces "one login, one profile" at the database level,
+        // or else EF would let two Drivers point at the same ApplicationUserId.
         modelBuilder.Entity<Driver>()
             .HasOne(d => d.ApplicationUser)
             .WithOne()
@@ -48,6 +50,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<int>
             .HasIndex(c => c.ApplicationUserId)
             .IsUnique();
 
+        // Readable straight from a psql query, and safe if the enum's numbers ever shift.
         modelBuilder.Entity<Order>()
             .Property(o => o.Status)
             .HasConversion<string>();
@@ -55,6 +58,22 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<int>
         modelBuilder.Entity<Order>()
             .Property(o => o.OrderType)
             .HasConversion<string>();
+
+        modelBuilder.Entity<OpeningHours>()
+            .Property(oh => oh.DayOfWeek)
+            .HasConversion<string>();
+
+        // HasData seeds the single settings row as part of the migration itself
+        // So a fresh database always "open" rather than empty table (service has to null-check on every order)
+        // Id is hardcoded because it's a singleton -> nothing ever inserts a second row.
+        // Models.RestaurantSettings, fully qualified: inside this class the DbSet property named
+        // RestaurantSettings shadows the type of the same name, so the bare name won't resolve.
+        modelBuilder.Entity<RestaurantSettings>().HasData(new RestaurantSettings
+        {
+            Id = Models.RestaurantSettings.SingletonId,
+            IsTemporarilyClosed = false,
+            ClosureReason = string.Empty
+        });
 
 
         // Both FKs below are required (non-nullable)
