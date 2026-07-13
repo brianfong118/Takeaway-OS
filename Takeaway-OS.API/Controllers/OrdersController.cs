@@ -1,3 +1,5 @@
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Takeaway_OS.API.DTOs;
@@ -17,11 +19,36 @@ public class OrdersController : ControllerBase
         _orderService = orderService;
     }
 
+    // Reading identity off the request is an HTTP concern, so it's resolved here and passed down as int
+    //
+    // AuthService signs the token with JwtRegisteredClaimNames.Sub ("sub"), 
+    // but JwtBearer's default MapInboundClaims=true RENAMES "sub" to ClaimTypes.NameIdentifier on the way in 
+    // so the claim that goes out is NOT the claim that comes back. Checking both means this keeps working whether
+    // or not that mapping is ever turned off, instead of silently returning null (which would quietly
+    // downgrade a logged-in customer's order to a guest order - a bug with no error message).
+    private int? GetApplicationUserId()
+    {
+        var raw = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue(JwtRegisteredClaimNames.Sub); 
+        return int.TryParse(raw, out var id) ? id : null;
+    }
+
     [HttpGet]
-    [Authorize(Roles = Roles.Owner)] // no per-customer order-history scoping exists yet, so this stays Owner-only to avoid leaking other customers' orders
+    [Authorize(Roles = Roles.Owner)] // the whole-restaurant view; customers get their own scoped list from GET /mine
     public async Task<ActionResult<List<OrderDto>>> GetAll()
     {
         return Ok(await _orderService.GetAllAsync());
+    }
+
+    // Sits above GetById's "{id}" route on purpose: "mine" is a literal segment, and if the
+    // parameterised route were matched first, "mine" would be parsed as an id and 400 on the int bind.
+    [HttpGet("mine")]
+    [Authorize(Roles = Roles.Customer)]
+    public async Task<ActionResult<List<OrderDto>>> GetMine()
+    {
+        var applicationUserId = GetApplicationUserId();
+        if (applicationUserId is null) return Unauthorized(); // authenticated but no usable subject claim - a malformed token, not a valid empty history
+
+        return Ok(await _orderService.GetForCustomerAsync(applicationUserId.Value));
     }
 
     [HttpGet("{id}")]
@@ -37,7 +64,8 @@ public class OrdersController : ControllerBase
     [AllowAnonymous] // guest checkout must stay open; logged-in customers also hit this same endpoint
     public async Task<ActionResult<OrderDto>> Create(OrderCreateDto dto)
     {
-        var result = await _orderService.CreateAsync(dto);
+        // AllowAnonymous -> UseAuthentication still decodes an Authorization header if one was sent
+        var result = await _orderService.CreateAsync(dto, GetApplicationUserId());
 
         // Checked before the generic failure below: "we're closed" is a 409, not a 400.
         if (result.RestaurantClosed) return Conflict(result.Error);

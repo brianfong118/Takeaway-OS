@@ -36,7 +36,28 @@ public class OrderService : IOrderService
         return order is null ? null : MapToDto(order);
     }
 
-    public async Task<OrderCreateResult> CreateAsync(OrderCreateDto dto)
+    public async Task<List<OrderDto>> GetForCustomerAsync(int applicationUserId)
+    {
+        // Resolve login -> Customer profile here rather than trusting a caller-supplied Customer.Id.
+        var customerId = await _context.Customers
+            .Where(c => c.ApplicationUserId == applicationUserId)
+            .Select(c => (int?)c.Id)
+            .FirstOrDefaultAsync();
+
+        // No Customer profile (an Owner or Driver login hitting this) -> no history, not an error.
+        if (customerId is null) return new List<OrderDto>();
+
+        var orders = await _context.Orders
+            .Include(o => o.OrderItems)
+                .ThenInclude(oi => oi.OrderItemModifiers)
+            .Where(o => o.CustomerId == customerId) // the scoping that makes this safe to expose to a non-Owner
+            .OrderByDescending(o => o.CreatedAt)
+            .ToListAsync();
+
+        return orders.Select(MapToDto).ToList();
+    }
+
+    public async Task<OrderCreateResult> CreateAsync(OrderCreateDto dto, int? applicationUserId)
     {
         var status = await _businessHoursService.GetStatusAsync();
         if (!status.IsOpen)
@@ -45,11 +66,22 @@ public class OrderService : IOrderService
         if (dto.Items.Count == 0)
             return new OrderCreateResult { Error = "Order must contain at least one item." };
 
+        // A logged-in Owner/Driver has no Customer profile, so this stays null and their order is a guest order
+        int? customerId = null;
+        if (applicationUserId is not null)
+        {
+            customerId = await _context.Customers
+                .Where(c => c.ApplicationUserId == applicationUserId)
+                .Select(c => (int?)c.Id)
+                .FirstOrDefaultAsync();
+        }
+
         var order = new Order
         {
             CustomerName = dto.CustomerName,
             CustomerPhone = dto.CustomerPhone,
             DeliveryAddress = dto.DeliveryAddress,
+            CustomerId = customerId, // null = guest; never read from dto, only from the validated JWT
             OrderType = dto.OrderType,
             Notes = dto.Notes,
             Status = OrderStatus.Pending, // every new order starts here cuz client can't choose a starting status
@@ -176,6 +208,7 @@ public class OrderService : IOrderService
             Status = order.Status,
             Notes = order.Notes,
             CreatedAt = order.CreatedAt,
+            CustomerId = order.CustomerId,
             Items = order.OrderItems.Select(oi => new OrderItemDto
             {
                 Id = oi.Id,

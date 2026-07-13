@@ -31,10 +31,17 @@ public interface IOrderService
 {
     Task<List<OrderDto>> GetAllAsync();
     Task<OrderDto?> GetByIdAsync(int id);
-    Task<OrderCreateResult> CreateAsync(OrderCreateDto dto);
+
+    // Every order placed by the Customer profile attached to this Identity login.
+    // Takes an ApplicationUserId (what the JWT actually carries), not a Customer.Id - the caller
+    // can't be trusted to tell us which customer they are, so the service resolves it itself.
+    Task<List<OrderDto>> GetForCustomerAsync(int applicationUserId);
+
+    // applicationUserId is null for guest checkout, which stays the default path.
+    // Separate parameter rather than a field on OrderCreateDto BECAUSE it comes from the validated JWT 
+    // putting it in the request body would let a caller claim any customer's ID.
+    Task<OrderCreateResult> CreateAsync(OrderCreateDto dto, int? applicationUserId);
     Task<OrderStatusUpdateResult> UpdateStatusAsync(int id, OrderStatusUpdateDto dto);
 
     // No DeleteAsync: orders are never deleted, only moved to Cancelled via UpdateStatusAsync
-    // (matches the "no OrderItemUpdateDto" call in DTOs/OrderItemDto.cs
-    // wrong orders get cancelled/recreated by staff, not edited or removed
 }

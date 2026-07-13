@@ -21,12 +21,17 @@ public class BusinessHoursService : IBusinessHoursService
 
     public async Task<List<OpeningHoursDto>> GetScheduleAsync()
     {
-        var hours = await _context.OpeningHours
-            .OrderBy(oh => oh.DayOfWeek)  // Sunday(0) -> Saturday(6); the string column stores the name, but EF orders by the underlying enum
-            .ThenBy(oh => oh.OpenTime)    // so a split shift lists the lunch window before the evening one
-            .ToListAsync();
+        // ToListAsync FIRST, then sort in memory. Sorting in the query would push ORDER BY into
+        // SQL, and because HasConversion<string>() stores DayOfWeek as text, Postgres would sort
+        // it ALPHABETICALLY - Friday, Monday, Saturday, Sunday, Thursday... - not Sunday->Saturday.
+        // In memory the values are real DayOfWeek enums again, so this sorts by the enum's number.
+        var hours = await _context.OpeningHours.ToListAsync();
 
-        return hours.Select(MapToDto).ToList();
+        return hours
+            .OrderBy(oh => oh.DayOfWeek)  // Sunday(0) -> Saturday(6)
+            .ThenBy(oh => oh.OpenTime)    // so a split shift lists the lunch window before the evening one
+            .Select(MapToDto)
+            .ToList();
     }
 
     public async Task<RestaurantStatusDto> GetStatusAsync()

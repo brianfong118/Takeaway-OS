@@ -50,6 +50,22 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<int>
             .HasIndex(c => c.ApplicationUserId)
             .IsUnique();
 
+        // Orders.CustomerId is nullable (guest checkout), so this is an optional relationship:
+        // SetNull, not Restrict: an order is a financial record and must outlive the account that placed it 
+        // Restrict would make a Customer with any order history undeletable; 
+        // Cascade would delete real orders along with the account. 
+        // SetNull keeps the order row and just detaches it, which degrades it to exactly a guest order 
+        // name/phone/address snapshot above is still there, so it stays a complete record.
+        modelBuilder.Entity<Order>()
+            .HasOne(o => o.Customer)
+            .WithMany() // no navigation property on Customer, because nothing needs to walk Customer -> Orders in memory; order history is a query, not a loaded collection
+            .HasForeignKey(o => o.CustomerId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        // Order history -> FK is the filter column on every such query - without this index that's a full table scan.
+        modelBuilder.Entity<Order>()
+            .HasIndex(o => o.CustomerId);
+
         // Readable straight from a psql query, and safe if the enum's numbers ever shift.
         modelBuilder.Entity<Order>()
             .Property(o => o.Status)

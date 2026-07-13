@@ -12,6 +12,10 @@ public class OrderDto  // shape returned by GET requests
     public OrderStatus Status { get; set; }
     public string Notes { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; }
+
+    // null = placed as a guest. Lets the Owner's order list tell an account order from a guest one.
+    public int? CustomerId { get; set; }
+
     public List<OrderItemDto> Items { get; set; } = new();
 
     // Computed by the service on every read: sum(UnitPrice * Quantity) + sum(modifier PriceDeltas).
