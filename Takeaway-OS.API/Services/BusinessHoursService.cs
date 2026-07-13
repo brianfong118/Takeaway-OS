@@ -26,13 +26,7 @@ public class BusinessHoursService : IBusinessHoursService
             .ThenBy(oh => oh.OpenTime)    // so a split shift lists the lunch window before the evening one
             .ToListAsync();
 
-        return hours.Select(oh => new OpeningHoursDto
-        {
-            Id = oh.Id,
-            DayOfWeek = oh.DayOfWeek,
-            OpenTime = oh.OpenTime,
-            CloseTime = oh.CloseTime
-        }).ToList();
+        return hours.Select(MapToDto).ToList();
     }
 
     public async Task<RestaurantStatusDto> GetStatusAsync()
@@ -90,4 +84,129 @@ public class BusinessHoursService : IBusinessHoursService
         // Past-midnight window, early-hours half: yesterday's row is still running until CloseTime.
         return now < window.CloseTime;
     }
+
+    public async Task<OpeningHoursSaveResult> CreateWindowAsync(OpeningHoursCreateDto dto)
+    {
+        var error = await ValidateWindowAsync(dto.DayOfWeek, dto.OpenTime, dto.CloseTime, excludeId: null);
+        if (error is not null) return new OpeningHoursSaveResult { Error = error };
+
+        var window = new OpeningHours
+        {
+            DayOfWeek = dto.DayOfWeek,
+            OpenTime = dto.OpenTime,
+            CloseTime = dto.CloseTime
+        };
+
+        _context.OpeningHours.Add(window);
+        await _context.SaveChangesAsync();
+
+        return new OpeningHoursSaveResult { Window = MapToDto(window) };
+    }
+
+    public async Task<OpeningHoursSaveResult> UpdateWindowAsync(int id, OpeningHoursUpdateDto dto)
+    {
+        var window = await _context.OpeningHours.FindAsync(id);
+        if (window is null) return new OpeningHoursSaveResult { NotFound = true };
+
+        // excludeId: the row being edited must not be compared against its own old values,
+        // or every update would "overlap itself" and be rejected.
+        var error = await ValidateWindowAsync(dto.DayOfWeek, dto.OpenTime, dto.CloseTime, excludeId: id);
+        if (error is not null) return new OpeningHoursSaveResult { Error = error };
+
+        window.DayOfWeek = dto.DayOfWeek;
+        window.OpenTime = dto.OpenTime;
+        window.CloseTime = dto.CloseTime;
+        await _context.SaveChangesAsync();
+
+        return new OpeningHoursSaveResult { Window = MapToDto(window) };
+    }
+
+    public async Task<bool> DeleteWindowAsync(int id)
+    {
+        var window = await _context.OpeningHours.FindAsync(id);
+        if (window is null) return false;
+
+        _context.OpeningHours.Remove(window);
+        await _context.SaveChangesAsync();
+        return true;
+    }
+
+    public async Task SetClosureAsync(ClosureUpdateDto dto)
+    {
+        // FindAsync, not Add: the row is seeded by the AddBusinessHours migration and there is only 1
+        var settings = await _context.RestaurantSettings.FindAsync(RestaurantSettings.SingletonId);
+        if (settings is null) // shouldn't happen, but if the migration was never run, create the row now rather than throwing a null-ref exception.
+        {
+            settings = new RestaurantSettings { Id = RestaurantSettings.SingletonId };
+            _context.RestaurantSettings.Add(settings);
+        }
+
+        settings.IsTemporarilyClosed = dto.IsTemporarilyClosed;         
+        settings.ClosureReason = dto.IsTemporarilyClosed ? dto.ClosureReason : string.Empty; // Reopening clears the reason 
+
+        await _context.SaveChangesAsync();
+    }
+
+    // Returns null when the window is valid, or the reason it isn't.
+    private async Task<string?> ValidateWindowAsync(DayOfWeek day, TimeOnly open, TimeOnly close, int? excludeId)
+    {
+        if (open == close)
+            return "OpenTime and CloseTime cannot be the same. For a window that runs past midnight, set CloseTime earlier than OpenTime (e.g. 17:00 -> 00:30).";
+
+        var candidate = ToWeekInterval(day, open, close);
+
+        var existing = await _context.OpeningHours
+            .Where(oh => excludeId == null || oh.Id != excludeId) 
+            .ToListAsync();
+
+        foreach (var other in existing)
+        {
+            if (Overlaps(candidate, ToWeekInterval(other.DayOfWeek, other.OpenTime, other.CloseTime))) 
+                return $"This window overlaps the existing {other.DayOfWeek} {other.OpenTime:HH\\:mm}-{other.CloseTime:HH\\:mm} window.";
+        }
+
+        return null;
+    }
+
+    private const int MinutesPerDay = 1440;
+    private const int MinutesPerWeek = 7 * MinutesPerDay;
+
+    // Overlap can't be checked day-by-day, because a past-midnight window physically sits on 2 days
+    // So each window converted into 1 continuous "minutes since Sunday 00:00" timeline
+    private static (int Start, int Length) ToWeekInterval(DayOfWeek day, TimeOnly open, TimeOnly close)
+    {
+        var openMinutes = (int)open.ToTimeSpan().TotalMinutes;
+        var closeMinutes = (int)close.ToTimeSpan().TotalMinutes;
+
+        var length = closeMinutes - openMinutes;
+        if (length < 0) length += MinutesPerDay; // past-midnight: close is on the following day
+
+        return (Start: (int)day * MinutesPerDay + openMinutes, Length: length);
+    }
+
+    // The timeline is a circle, not a line: Comparing raw start/end numbers would miss that entirely.
+    //
+    // Measure everything RELATIVE to interval a's start.
+    // Slide a to position 0, so it occupies [0, a.Length). Then b starts at some offset that is,
+    // by construction, in 0..10080 - and b overlaps a in exactly two ways:
+    private static bool Overlaps((int Start, int Length) a, (int Start, int Length) b)
+    {
+        // Modulo keeps the offset positive even when b starts "before" a in raw clock terms.
+        var offset = ((b.Start - a.Start) % MinutesPerWeek + MinutesPerWeek) % MinutesPerWeek;
+
+        // 1. b starts inside a.
+        if (offset < a.Length) return true;
+
+        // 2. b starts after a, but is long enough to wrap past the end of the week and back
+        //    into a's opening minutes.
+        return offset + b.Length > MinutesPerWeek;
+    }
+
+    private static OpeningHoursDto MapToDto(OpeningHours window) => new()
+    {
+        Id = window.Id,
+        DayOfWeek = window.DayOfWeek,
+        OpenTime = window.OpenTime,
+        CloseTime = window.CloseTime
+    };
 }
