@@ -37,6 +37,10 @@ public interface IOrderService
     // can't be trusted to tell us which customer they are, so the service resolves it itself.
     Task<List<OrderDto>> GetForCustomerAsync(int applicationUserId);
 
+    // Returns null both when the order doesn't exist AND when it belongs to someone else
+    // so controller's 404 can't be used to probe which order IDs exist.
+    Task<OrderDto?> GetByIdForCustomerAsync(int id, int applicationUserId);
+
     // applicationUserId is null for guest checkout, which stays the default path.
     // Separate parameter rather than a field on OrderCreateDto BECAUSE it comes from the validated JWT 
     // putting it in the request body would let a caller claim any customer's ID.

@@ -36,13 +36,21 @@ public class OrderService : IOrderService
         return order is null ? null : MapToDto(order);
     }
 
+    // The JWT identifies an ApplicationUser (the login); orders are keyed by Customer.Id (the profile).
+    // Every customer-scoped read goes through here so the mapping is done in exactly one place -
+    // and so no caller can ever pass a Customer.Id straight in from a request 
+    // (dont trust the client to tell us which customer they are)
+    private async Task<int?> ResolveCustomerIdAsync(int applicationUserId)
+    {
+        return await _context.Customers
+            .Where(c => c.ApplicationUserId == applicationUserId) 
+            .Select(c => (int?)c.Id) // nullable so the whole query returns null when no row matches, instead of throwing
+            .FirstOrDefaultAsync();
+    }
+
     public async Task<List<OrderDto>> GetForCustomerAsync(int applicationUserId)
     {
-        // Resolve login -> Customer profile here rather than trusting a caller-supplied Customer.Id.
-        var customerId = await _context.Customers
-            .Where(c => c.ApplicationUserId == applicationUserId)
-            .Select(c => (int?)c.Id)
-            .FirstOrDefaultAsync();
+        var customerId = await ResolveCustomerIdAsync(applicationUserId);
 
         // No Customer profile (an Owner or Driver login hitting this) -> no history, not an error.
         if (customerId is null) return new List<OrderDto>();
@@ -57,6 +65,19 @@ public class OrderService : IOrderService
         return orders.Select(MapToDto).ToList();
     }
 
+    public async Task<OrderDto?> GetByIdForCustomerAsync(int id, int applicationUserId)
+    {
+        var customerId = await ResolveCustomerIdAsync(applicationUserId);
+        if (customerId is null) return null;
+
+        var order = await _context.Orders
+            .Include(o => o.OrderItems)
+                .ThenInclude(oi => oi.OrderItemModifiers)
+            .FirstOrDefaultAsync(o => o.Id == id && o.CustomerId == customerId); // the scoping that makes this safe to expose to a non-Owner
+
+        return order is null ? null : MapToDto(order);
+    }
+
     public async Task<OrderCreateResult> CreateAsync(OrderCreateDto dto, int? applicationUserId)
     {
         var status = await _businessHoursService.GetStatusAsync();
@@ -67,14 +88,9 @@ public class OrderService : IOrderService
             return new OrderCreateResult { Error = "Order must contain at least one item." };
 
         // A logged-in Owner/Driver has no Customer profile, so this stays null and their order is a guest order
-        int? customerId = null;
-        if (applicationUserId is not null)
-        {
-            customerId = await _context.Customers
-                .Where(c => c.ApplicationUserId == applicationUserId)
-                .Select(c => (int?)c.Id)
-                .FirstOrDefaultAsync();
-        }
+        int? customerId = applicationUserId is null
+            ? null
+            : await ResolveCustomerIdAsync(applicationUserId.Value);
 
         var order = new Order
         {

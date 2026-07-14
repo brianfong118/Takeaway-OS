@@ -1,8 +1,7 @@
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Takeaway_OS.API.DTOs;
+using Takeaway_OS.API.Extensions;  // User.GetApplicationUserId() - reads the caller's id off the JWT
 using Takeaway_OS.API.Models;
 using Takeaway_OS.API.Services;
 
@@ -19,19 +18,6 @@ public class OrdersController : ControllerBase
         _orderService = orderService;
     }
 
-    // Reading identity off the request is an HTTP concern, so it's resolved here and passed down as int
-    //
-    // AuthService signs the token with JwtRegisteredClaimNames.Sub ("sub"), 
-    // but JwtBearer's default MapInboundClaims=true RENAMES "sub" to ClaimTypes.NameIdentifier on the way in 
-    // so the claim that goes out is NOT the claim that comes back. Checking both means this keeps working whether
-    // or not that mapping is ever turned off, instead of silently returning null (which would quietly
-    // downgrade a logged-in customer's order to a guest order - a bug with no error message).
-    private int? GetApplicationUserId()
-    {
-        var raw = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue(JwtRegisteredClaimNames.Sub); 
-        return int.TryParse(raw, out var id) ? id : null;
-    }
-
     [HttpGet]
     [Authorize(Roles = Roles.Owner)] // the whole-restaurant view; customers get their own scoped list from GET /mine
     public async Task<ActionResult<List<OrderDto>>> GetAll()
@@ -45,17 +31,30 @@ public class OrdersController : ControllerBase
     [Authorize(Roles = Roles.Customer)]
     public async Task<ActionResult<List<OrderDto>>> GetMine()
     {
-        var applicationUserId = GetApplicationUserId();
+        var applicationUserId = User.GetApplicationUserId();
         if (applicationUserId is null) return Unauthorized(); // authenticated but no usable subject claim - a malformed token, not a valid empty history
 
         return Ok(await _orderService.GetForCustomerAsync(applicationUserId.Value));
     }
 
     [HttpGet("{id}")]
-    [Authorize(Roles = Roles.Owner)]
+    [Authorize(Roles = $"{Roles.Owner},{Roles.Customer}")] // interpolated const string - both roles satisfy it
     public async Task<ActionResult<OrderDto>> GetById(int id)
     {
-        var order = await _orderService.GetByIdAsync(id);
+        OrderDto? order;
+
+        if (User.IsInRole(Roles.Owner))
+        {
+            order = await _orderService.GetByIdAsync(id);
+        }
+        else
+        {
+            var applicationUserId = User.GetApplicationUserId();
+            if (applicationUserId is null) return Unauthorized();
+
+            order = await _orderService.GetByIdForCustomerAsync(id, applicationUserId.Value);
+        }
+
         if (order is null) return NotFound();
         return Ok(order);
     }
@@ -65,7 +64,7 @@ public class OrdersController : ControllerBase
     public async Task<ActionResult<OrderDto>> Create(OrderCreateDto dto)
     {
         // AllowAnonymous -> UseAuthentication still decodes an Authorization header if one was sent
-        var result = await _orderService.CreateAsync(dto, GetApplicationUserId());
+        var result = await _orderService.CreateAsync(dto, User.GetApplicationUserId());
 
         // Checked before the generic failure below: "we're closed" is a 409, not a 400.
         if (result.RestaurantClosed) return Conflict(result.Error);
