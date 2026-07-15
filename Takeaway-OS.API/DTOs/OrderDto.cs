@@ -33,16 +33,18 @@ public class OrderCreateDto : IValidatableObject  // shape accepted by POST /api
     [MaxLength(100)]
     public string CustomerName { get; set; } = string.Empty;
 
-    // Non-empty only — deliberately no [Phone] format check. This is a real business; a valid UK number
-    // in an unexpected format shouldn't cost a customer their order. Only need *something* to call back on.
+    // Non-empty only -> deliberately no [Phone] format check
+    // A unexpected format shouldn't cost a customer their order. Only need *something* to call back on.
     [Required]
     [MaxLength(30)]
     public string CustomerPhone { get; set; } = string.Empty;
 
-    // Not [Required]: only Delivery orders need an address. That conditional lives in Validate() below,
-    // because a per-property attribute can't look at OrderType to decide.
+    // Not [Required]: only Delivery orders need an address -> can come from AddressId instead (see Validate below)
+    // A per-property attribute can't express either of those conditions.
     [MaxLength(250)]
     public string DeliveryAddress { get; set; } = string.Empty;
+
+    public int? AddressId { get; set; }
 
     public OrderType OrderType { get; set; }
 
@@ -61,10 +63,15 @@ public class OrderCreateDto : IValidatableObject  // shape accepted by POST /api
     // and keying the result to DeliveryAddress lets the frontend highlight exactly that field.
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
-        if (OrderType == OrderType.Delivery && string.IsNullOrWhiteSpace(DeliveryAddress))
+        // A delivery order needs an address from EITHER source: a saved AddressId || free text
+        // Whether the AddressId actually resolves to one of the caller's addresses is a DB check -> service 
+        // here we only know the request didn't supply either
+        if (OrderType == OrderType.Delivery
+            && AddressId is null
+            && string.IsNullOrWhiteSpace(DeliveryAddress))
         {
             yield return new ValidationResult(
-                "Delivery orders require a delivery address.",
+                "Delivery orders require a delivery address — select a saved address or enter one.",
                 new[] { nameof(DeliveryAddress) });
         }
     }

@@ -93,11 +93,30 @@ public class OrderService : IOrderService
             ? null
             : await ResolveCustomerIdAsync(applicationUserId.Value);
 
+        // Default: whatever free text the request carried (guests, and customers who typed a one-off address).
+        var deliveryAddress = dto.DeliveryAddress;
+
+        // A customer picked one of their saved addresses instead of retyping it -> SNAPSHOT 
+        if (dto.AddressId is not null)
+        {
+            if (customerId is null)
+                return new OrderCreateResult { Error = "A saved address can only be used by a signed-in customer account." };
+
+            // Scoped to the caller's own customerId: someone else's AddressId is indistinguishable from a null
+            // customer can't probe another customer's address book through checkout.
+            var address = await _context.Addresses
+                .FirstOrDefaultAsync(a => a.Id == dto.AddressId && a.CustomerId == customerId);
+            if (address is null)
+                return new OrderCreateResult { Error = $"Address {dto.AddressId} does not exist." };
+
+            deliveryAddress = FormatAddress(address);
+        }
+
         var order = new Order
         {
             CustomerName = dto.CustomerName,
             CustomerPhone = dto.CustomerPhone,
-            DeliveryAddress = dto.DeliveryAddress,
+            DeliveryAddress = deliveryAddress,
             CustomerId = customerId, // null = guest; never read from dto, only from the validated JWT
             OrderType = dto.OrderType,
             Notes = dto.Notes,
@@ -216,6 +235,16 @@ public class OrderService : IOrderService
             (OrderStatus.OutForDelivery, OrderStatus.Completed) => true,
             _ => false // Completed and Cancelled are terminal
         };
+    }
+
+    // Converts a saved Address -> single free-text line the Order snapshots and the driver reads.
+    // Label ("Home"/"Work") is the customer's own nickname, not part of the postal address, so it's left out.
+    // Empty lines (e.g. no Line2) are dropped so the result never has ", ," gaps.
+    private static string FormatAddress(Address address)
+    {
+        var parts = new[] { address.Line1, address.Line2, address.City, address.Postcode }
+            .Where(part => !string.IsNullOrWhiteSpace(part));
+        return string.Join(", ", parts);
     }
 
     private static OrderDto MapToDto(Order order)
