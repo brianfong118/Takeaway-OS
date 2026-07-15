@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using Takeaway_OS.API.Models;
 
 namespace Takeaway_OS.API.DTOs;
@@ -23,17 +24,50 @@ public class OrderDto  // shape returned by GET requests
     public decimal Total { get; set; }
 }
 
-public class OrderCreateDto  // shape accepted by POST /api/orders
+// IValidatableObject adds a cross-field rule (see Validate below) on top of the per-property attributes.
+public class OrderCreateDto : IValidatableObject  // shape accepted by POST /api/orders
 {
+    // [Required] on a string rejects null AND empty/whitespace by default (AllowEmptyStrings = false),
+    // so an empty CustomerName is a 400, not a blank contact on a real order.
+    [Required]
+    [MaxLength(100)]
     public string CustomerName { get; set; } = string.Empty;
+
+    // Non-empty only — deliberately no [Phone] format check. This is a real business; a valid UK number
+    // in an unexpected format shouldn't cost a customer their order. Only need *something* to call back on.
+    [Required]
+    [MaxLength(30)]
     public string CustomerPhone { get; set; } = string.Empty;
+
+    // Not [Required]: only Delivery orders need an address. That conditional lives in Validate() below,
+    // because a per-property attribute can't look at OrderType to decide.
+    [MaxLength(250)]
     public string DeliveryAddress { get; set; } = string.Empty;
+
     public OrderType OrderType { get; set; }
+
+    [MaxLength(500)]
     public string Notes { get; set; } = string.Empty;
+
+    // An empty basket is not an order. [MinLength(1)] replaces the old manual Count == 0 check in the service.
+    [MinLength(1, ErrorMessage = "Order must contain at least one item.")]
     public List<OrderItemCreateDto> Items { get; set; } = new();
 
     // No Status field — every new order starts at OrderStatus.Pending, set by the service, not the client.
     // No CreatedAt — server sets this via DateTime.UtcNow, never trusts a client-supplied timestamp.
+
+    // Cross-field validation: attributes above each judge one property in isolation, but "an address is required" depends on OrderType,
+    // This runs during model binding, so a failure is a 400 in the same ValidationProblemDetails shape as the attributes 
+    // and keying the result to DeliveryAddress lets the frontend highlight exactly that field.
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+    {
+        if (OrderType == OrderType.Delivery && string.IsNullOrWhiteSpace(DeliveryAddress))
+        {
+            yield return new ValidationResult(
+                "Delivery orders require a delivery address.",
+                new[] { nameof(DeliveryAddress) });
+        }
+    }
 }
 
 // Separate, narrow DTO for the staff status-update endpoint

@@ -84,8 +84,9 @@ public class OrderService : IOrderService
         if (!status.IsOpen)
             return new OrderCreateResult { Error = status.Message, RestaurantClosed = true }; // 409, not 400 — see OrderCreateResult
 
-        if (dto.Items.Count == 0)
-            return new OrderCreateResult { Error = "Order must contain at least one item." };
+        // Empty-basket, quantity, required-field and conditional-address checks now live on OrderCreateDto
+        // (DataAnnotations + IValidatableObject); [ApiController] rejects those with a 400 before we get here.
+        // All rules below need the database -> they can't be expressed as attributes.
 
         // A logged-in Owner/Driver has no Customer profile, so this stays null and their order is a guest order
         int? customerId = applicationUserId is null
@@ -116,6 +117,9 @@ public class OrderService : IOrderService
             if (menuItem is null)
                 return new OrderCreateResult { Error = $"MenuItem {itemDto.MenuItemId} does not exist." };
 
+            if (!menuItem.IsAvailable)
+                return new OrderCreateResult { Error = $"MenuItem {itemDto.MenuItemId} ('{menuItem.Name}') is not available." };
+
             // Validate + collect every submitted option up front so we can snapshot Name/PriceDelta
             // later without hitting the database again.
             var selectedOptions = new List<ModifierOption>();
@@ -126,6 +130,8 @@ public class OrderService : IOrderService
                 var option = await _context.ModifierOptions.FindAsync(optionId);
                 if (option is null)
                     return new OrderCreateResult { Error = $"ModifierOption {optionId} does not exist." };
+                if (!option.IsActive)
+                    return new OrderCreateResult { Error = $"ModifierOption {optionId} ('{option.Name}') is not available." };
                 if (!offeredGroupIds.Contains(option.ModifierGroupId))
                     return new OrderCreateResult { Error = $"ModifierOption {optionId} ('{option.Name}') is not offered on MenuItem {itemDto.MenuItemId}." };
 
