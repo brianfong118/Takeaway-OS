@@ -15,6 +15,11 @@ public class Order
     public int? CustomerId { get; set; }
     public Customer? Customer { get; set; }
 
+    // Nullable -> null = "no driver assigned yet" (every order's starting state/permanent state of every collection order 
+    // Set by the Owner via the assignment endpoint, never by the customer placing the order.
+    public int? DriverId { get; set; }
+    public Driver? Driver { get; set; }
+
     public OrderType OrderType { get; set; }
     public OrderStatus Status { get; set; } = OrderStatus.Pending;
     public string Notes { get; set; } = string.Empty;

@@ -27,6 +27,14 @@ public enum OrderStatusUpdateResult
     InvalidTransition   // covers: backwards/skipped transitions, and manually setting Paid (Stripe-webhook-only)
 }
 
+public enum DriverAssignmentResult
+{
+    Success,
+    OrderNotFound, // 404: the {id} in the URL names no order
+    DriverNotFound, // 400: the URL is fine, but the body points at a driver that doesn't exist
+    NotDeliveryOrder // 400: the order exists but is Collection, so a driver makes no sense on it
+}
+
 public interface IOrderService
 {
     Task<List<OrderDto>> GetAllAsync();
@@ -46,6 +54,10 @@ public interface IOrderService
     // putting it in the request body would let a caller claim any customer's ID.
     Task<OrderCreateResult> CreateAsync(OrderCreateDto dto, int? applicationUserId);
     Task<OrderStatusUpdateResult> UpdateStatusAsync(int id, OrderStatusUpdateDto dto);
+
+    // Owner-only: set (or clear, when dto.DriverId is null) the driver carrying a delivery order.
+    // Takes the whole DTO rather than a bare int? so the "assign vs unassign" intent is explicit at the call site.
+    Task<DriverAssignmentResult> AssignDriverAsync(int id, OrderDriverAssignmentDto dto);
 
     // No DeleteAsync: orders are never deleted, only moved to Cancelled via UpdateStatusAsync
 }

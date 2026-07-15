@@ -215,6 +215,26 @@ public class OrderService : IOrderService
         return OrderStatusUpdateResult.Success;
     }
 
+    public async Task<DriverAssignmentResult> AssignDriverAsync(int id, OrderDriverAssignmentDto dto)
+    {
+        var order = await _context.Orders.FindAsync(id);
+        if (order is null) return DriverAssignmentResult.OrderNotFound;
+
+        if (order.OrderType != OrderType.Delivery)
+            return DriverAssignmentResult.NotDeliveryOrder;
+
+        if (dto.DriverId is not null)
+        {
+            var driverExists = await _context.Drivers.AnyAsync(d => d.Id == dto.DriverId);
+            if (!driverExists) return DriverAssignmentResult.DriverNotFound;
+        }
+
+        // Covers both directions: a real id assigns, null (owner reassigns) clears 
+        order.DriverId = dto.DriverId;
+        await _context.SaveChangesAsync();
+        return DriverAssignmentResult.Success;
+    }
+
     // Forward flow only: Pending → Paid → Preparing → Ready → (OutForDelivery →) Completed.
     // Paid is rejected unconditionally -> only ever set by the future Stripe webhook NOT through this endpoint
     // OutForDelivery only makes sense for delivery orders 
@@ -260,6 +280,7 @@ public class OrderService : IOrderService
             Notes = order.Notes,
             CreatedAt = order.CreatedAt,
             CustomerId = order.CustomerId,
+            DriverId = order.DriverId,
             Items = order.OrderItems.Select(oi => new OrderItemDto
             {
                 Id = oi.Id,

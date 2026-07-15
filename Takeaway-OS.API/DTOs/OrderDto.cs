@@ -16,7 +16,7 @@ public class OrderDto  // shape returned by GET requests
 
     // null = placed as a guest. Lets the Owner's order list tell an account order from a guest one.
     public int? CustomerId { get; set; }
-
+    public int? DriverId { get; set; }
     public List<OrderItemDto> Items { get; set; } = new();
 
     // Computed by the service on every read: sum(UnitPrice * Quantity) + sum(modifier PriceDeltas).
@@ -83,4 +83,15 @@ public class OrderCreateDto : IValidatableObject  // shape accepted by POST /api
 public class OrderStatusUpdateDto
 {
     public OrderStatus Status { get; set; }
+}
+
+// Body for PUT /api/orders/{id}/driver (Owner-only).
+// DriverId is nullable: the same route both assigns and unassigns.
+//   { "driverId": 3 }    -> assign driver 3
+//   { "driverId": null } -> clear the assignment
+// Making unassign null instead of delete keeps the operation idempotent 
+// The order id is NOT a field here: it's the {id} route segment, so the body can't disagree with the URL.
+public class OrderDriverAssignmentDto
+{
+    public int? DriverId { get; set; }
 }

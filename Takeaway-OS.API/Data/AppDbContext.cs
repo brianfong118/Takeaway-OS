@@ -56,6 +56,11 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<int>
         // Cascade would delete real orders along with the account. 
         // SetNull keeps the order row and just detaches it, which degrades it to exactly a guest order 
         // name/phone/address snapshot above is still there, so it stays a complete record.
+
+        // EF default for an *optional* relationship is ClientSetNull (null the FK only on entities already loaded in memory)
+        // which leaves the database itself with no ON DELETE rule. 
+        // Stating SetNull puts the real ON DELETE SET NULL into the Postgres schema, so a direct DELETE of a driver row can't orphan an order.
+
         modelBuilder.Entity<Order>()
             .HasOne(o => o.Customer)
             .WithMany() // no navigation property on Customer, because nothing needs to walk Customer -> Orders in memory; order history is a query, not a loaded collection
@@ -65,6 +70,15 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<int>
         // Order history -> FK is the filter column on every such query - without this index that's a full table scan.
         modelBuilder.Entity<Order>()
             .HasIndex(o => o.CustomerId);
+
+        modelBuilder.Entity<Order>()
+            .HasOne(o => o.Driver)
+            .WithMany() // no navigation collection on Driver -> a driver's order list is a query, not a loaded set (same call as Customer)
+            .HasForeignKey(o => o.DriverId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        modelBuilder.Entity<Order>() 
+            .HasIndex(o => o.DriverId); 
 
         // Readable straight from a psql query, and safe if the enum's numbers ever shift.
         modelBuilder.Entity<Order>()

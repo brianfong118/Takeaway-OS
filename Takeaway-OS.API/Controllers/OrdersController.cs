@@ -89,4 +89,20 @@ public class OrdersController : ControllerBase
             _ => NoContent()
         };
     }
+
+    // Narrow endpoint for assigning a driver to a delivery order.
+    [HttpPut("{id}/driver")]
+    [Authorize(Roles = Roles.Owner)]
+    public async Task<IActionResult> AssignDriver(int id, OrderDriverAssignmentDto dto)
+    {
+        var result = await _orderService.AssignDriverAsync(id, dto);
+
+        return result switch
+        {
+            DriverAssignmentResult.OrderNotFound => NotFound(),
+            DriverAssignmentResult.DriverNotFound => BadRequest($"Driver {dto.DriverId} does not exist."),
+            DriverAssignmentResult.NotDeliveryOrder => BadRequest($"Order {id} is not a delivery order, so it can't have a driver."),
+            _ => NoContent()
+        };
+    }
 }
