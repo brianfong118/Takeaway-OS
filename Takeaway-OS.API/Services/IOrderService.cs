@@ -59,5 +59,14 @@ public interface IOrderService
     // Takes the whole DTO rather than a bare int? so the "assign vs unassign" intent is explicit at the call site.
     Task<DriverAssignmentResult> AssignDriverAsync(int id, OrderDriverAssignmentDto dto);
 
+    // Driver-scoped: every order currently assigned to the Driver profile behind this login.
+    // Takes applicationUserId (what the JWT carries), NOT a Driver.Id
+    Task<List<OrderDto>> GetAssignedAsync(int applicationUserId);
+
+    // A driver advances their OWN order through the delivery tail only (Ready -> OutForDelivery -> Completed).
+    // Reuses OrderStatusUpdateResult because the outcomes are identical in shape 
+    // diff from owners is WHICH transitions are allowed and the ownership scoping, both handled inside.
+    Task<OrderStatusUpdateResult> UpdateStatusByDriverAsync(int id, int applicationUserId, OrderStatusUpdateDto dto);
+
     // No DeleteAsync: orders are never deleted, only moved to Cancelled via UpdateStatusAsync
 }

@@ -43,8 +43,16 @@ public class OrderService : IOrderService
     private async Task<int?> ResolveCustomerIdAsync(int applicationUserId)
     {
         return await _context.Customers
-            .Where(c => c.ApplicationUserId == applicationUserId) 
+            .Where(c => c.ApplicationUserId == applicationUserId)
             .Select(c => (int?)c.Id) // nullable so the whole query returns null when no row matches, instead of throwing
+            .FirstOrDefaultAsync();
+    }
+
+    private async Task<int?> ResolveDriverIdAsync(int applicationUserId)
+    {
+        return await _context.Drivers
+            .Where(d => d.ApplicationUserId == applicationUserId)
+            .Select(d => (int?)d.Id)
             .FirstOrDefaultAsync();
     }
 
@@ -76,6 +84,39 @@ public class OrderService : IOrderService
             .FirstOrDefaultAsync(o => o.Id == id && o.CustomerId == customerId); // the scoping that makes this safe to expose to a non-Owner
 
         return order is null ? null : MapToDto(order);
+    }
+
+    public async Task<List<OrderDto>> GetAssignedAsync(int applicationUserId)
+    {
+        var driverId = await ResolveDriverIdAsync(applicationUserId);
+
+        if (driverId is null) return new List<OrderDto>();
+
+        var orders = await _context.Orders
+            .Include(o => o.OrderItems)
+                .ThenInclude(oi => oi.OrderItemModifiers)
+            .Where(o => o.DriverId == driverId) // the scoping that keeps a driver to their own deliveries
+            .OrderByDescending(o => o.CreatedAt)
+            .ToListAsync();
+
+        return orders.Select(MapToDto).ToList();
+    }
+
+    public async Task<OrderStatusUpdateResult> UpdateStatusByDriverAsync(int id, int applicationUserId, OrderStatusUpdateDto dto)
+    {
+        var driverId = await ResolveDriverIdAsync(applicationUserId);
+        if (driverId is null) return OrderStatusUpdateResult.OrderNotFound; // no profile -> no order is "theirs"
+
+        // The DriverId filter is the whole security boundary: driver can't discover or touch others' orders.
+        var order = await _context.Orders.FirstOrDefaultAsync(o => o.Id == id && o.DriverId == driverId);
+        if (order is null) return OrderStatusUpdateResult.OrderNotFound;
+
+        if (!IsValidDriverTransition(order, dto.Status))
+            return OrderStatusUpdateResult.InvalidTransition;
+
+        order.Status = dto.Status;
+        await _context.SaveChangesAsync();
+        return OrderStatusUpdateResult.Success;
     }
 
     public async Task<OrderCreateResult> CreateAsync(OrderCreateDto dto, int? applicationUserId)
@@ -254,6 +295,19 @@ public class OrderService : IOrderService
             (OrderStatus.Ready, OrderStatus.Completed) => order.OrderType == OrderType.Collection,
             (OrderStatus.OutForDelivery, OrderStatus.Completed) => true,
             _ => false // Completed and Cancelled are terminal
+        };
+    }
+
+    // WHITELIST, not a subset check against IsValidTransition: the driver's authority is defined by exactly these two pairs, 
+    // anything a driver could otherwise reach is absent by construction rather than by extra guards.
+    // No OrderType check needed: (AssignDriverAsync enforces that) + OrderType is never editable after creation.
+    private static bool IsValidDriverTransition(Order order, OrderStatus newStatus)
+    {
+        return (order.Status, newStatus) switch
+        {
+            (OrderStatus.Ready, OrderStatus.OutForDelivery) => true,
+            (OrderStatus.OutForDelivery, OrderStatus.Completed) => true,
+            _ => false
         };
     }
 

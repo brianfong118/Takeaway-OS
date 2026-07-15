@@ -37,6 +37,17 @@ public class OrdersController : ControllerBase
         return Ok(await _orderService.GetForCustomerAsync(applicationUserId.Value));
     }
 
+    // Also a literal segment, so like "mine" it can't be mistaken for the "{id}" route.
+    [HttpGet("assigned")]
+    [Authorize(Roles = Roles.Driver)]
+    public async Task<ActionResult<List<OrderDto>>> GetAssigned()
+    {
+        var applicationUserId = User.GetApplicationUserId();
+        if (applicationUserId is null) return Unauthorized();
+
+        return Ok(await _orderService.GetAssignedAsync(applicationUserId.Value));
+    }
+
     [HttpGet("{id}")]
     [Authorize(Roles = $"{Roles.Owner},{Roles.Customer}")] // interpolated const string - both roles satisfy it
     public async Task<ActionResult<OrderDto>> GetById(int id)
@@ -102,6 +113,26 @@ public class OrdersController : ControllerBase
             DriverAssignmentResult.OrderNotFound => NotFound(),
             DriverAssignmentResult.DriverNotFound => BadRequest($"Driver {dto.DriverId} does not exist."),
             DriverAssignmentResult.NotDeliveryOrder => BadRequest($"Order {id} is not a delivery order, so it can't have a driver."),
+            _ => NoContent()
+        };
+    }
+
+    // Driver-only: advance one of the driver's OWN orders along the delivery tail (Ready -> OutForDelivery -> Completed).
+    // Separate from UpdateStatus (Owner) on purpose: different role, different allowed transitions
+    [HttpPut("{id}/delivery-status")]
+    [Authorize(Roles = Roles.Driver)]
+    public async Task<IActionResult> UpdateDeliveryStatus(int id, OrderStatusUpdateDto dto)
+    {
+        var applicationUserId = User.GetApplicationUserId();
+        if (applicationUserId is null) return Unauthorized();
+
+        var result = await _orderService.UpdateStatusByDriverAsync(id, applicationUserId.Value, dto);
+
+        return result switch
+        {
+            // Not-theirs and not-existent both land here (the service collapses them) -> a driver can't enumerate orders.
+            OrderStatusUpdateResult.OrderNotFound => NotFound(),
+            OrderStatusUpdateResult.InvalidTransition => BadRequest($"A driver can't change order {id} to status '{dto.Status}'."),
             _ => NoContent()
         };
     }
