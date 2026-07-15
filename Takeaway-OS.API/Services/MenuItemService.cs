@@ -1,3 +1,4 @@
+using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
 using Takeaway_OS.API.Data;
 using Takeaway_OS.API.DTOs;
@@ -13,44 +14,53 @@ public class MenuItemService : IMenuItemService
         _context = context;
     }
 
+    // The entity->DTO shape, defined once and reused by every read below.
+    // It's an Expression (not a plain lambda) so EF Core translates it into SQL 
+    // the m.Category.Name reference becomes a JOIN, which is why none of the reads need a separate .Include(m => m.Category).
+    private static readonly Expression<Func<MenuItem, MenuItemDto>> ToDto = m => new MenuItemDto
+    {
+        Id = m.Id,
+        CategoryId = m.CategoryId,
+        CategoryName = m.Category.Name,
+        Name = m.Name,
+        Description = m.Description,
+        Price = m.Price,
+        IsAvailable = m.IsAvailable
+    };
+
+    // --- Admin reads (Owner): no availability filter, so disabled items are visible for editing. ---
     public async Task<List<MenuItemDto>> GetAllAsync()
     {
         return await _context.MenuItems
-            .Include(m => m.Category) // eager-load Category so CategoryName is available below
             .OrderBy(m => m.Name)
-            .Select(m => new MenuItemDto
-            {
-                Id = m.Id,
-                CategoryId = m.CategoryId,
-                CategoryName = m.Category.Name, // only works because of the .Include() above
-                Name = m.Name,
-                Description = m.Description,
-                Price = m.Price,
-                IsAvailable = m.IsAvailable
-            })
+            .Select(ToDto)
             .ToListAsync();
     }
 
     public async Task<MenuItemDto?> GetByIdAsync(int id)
     {
-        var menuItem = await _context.MenuItems
-            .Include(m => m.Category)
-            .FirstOrDefaultAsync(m => m.Id == id);
-        // FindAsync (used in CategoryService) can't be combined with .Include(),
-        // Use FirstOrDefaultAsync + an explicit id filter instead.
+        return await _context.MenuItems
+            .Where(m => m.Id == id)
+            .Select(ToDto)
+            .FirstOrDefaultAsync();
+    }
 
-        if (menuItem is null) return null;
+    // --- Public reads (anonymous): the same queries with the IsAvailable = true soft-delete filter. ---
+    public async Task<List<MenuItemDto>> GetAvailableAsync()
+    {
+        return await _context.MenuItems
+            .Where(m => m.IsAvailable)
+            .OrderBy(m => m.Name)
+            .Select(ToDto)
+            .ToListAsync();
+    }
 
-        return new MenuItemDto
-        {
-            Id = menuItem.Id,
-            CategoryId = menuItem.CategoryId,
-            CategoryName = menuItem.Category.Name,
-            Name = menuItem.Name,
-            Description = menuItem.Description,
-            Price = menuItem.Price,
-            IsAvailable = menuItem.IsAvailable
-        };
+    public async Task<MenuItemDto?> GetAvailableByIdAsync(int id)
+    {
+        return await _context.MenuItems
+            .Where(m => m.Id == id && m.IsAvailable)
+            .Select(ToDto)
+            .FirstOrDefaultAsync();
     }
 
     public async Task<MenuItemDto?> CreateAsync(MenuItemCreateDto dto)
