@@ -16,6 +16,24 @@ builder.Services.AddControllers()
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+// --- CORS ---
+// The trusted frontend origins, read from config so they differ per environment:
+// http://localhost:5173 (Vite) in Development, the real Vercel URL in Production (set via env var).
+// An explicit allow-list, never AllowAnyOrigin(), because this API carries JWTs.
+var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
+    ?? Array.Empty<string>();
+
+const string FrontendCorsPolicy = "FrontendPolicy";
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy(FrontendCorsPolicy, policy =>
+        policy.WithOrigins(allowedOrigins) // exact origins only
+              .AllowAnyHeader()  // allow the browser to send Content-Type, Authorization, etc.
+              .AllowAnyMethod()); // GET/POST/PUT/DELETE + the OPTIONS preflight
+    // No AllowCredentials(): the JWT rides in an Authorization header, not a cookie,
+    // so we don't opt into credentialed (cookie) requests.
+});
+
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
@@ -106,6 +124,10 @@ using (var scope = app.Services.CreateScope())
         }
     }
 }
+
+// UseCors must come before auth: a preflight OPTIONS request carries no JWT, so CORS
+// has to handle it before UseAuthentication/UseAuthorization would otherwise reject it.
+app.UseCors(FrontendCorsPolicy);
 
 // UseAuthentication decides WHO is calling (reads/validates the JWT).
 // UseAuthorization decides WHAT they're allowed to do ([Authorize] checks).
