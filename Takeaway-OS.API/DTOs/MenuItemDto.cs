@@ -1,6 +1,6 @@
 namespace Takeaway_OS.API.DTOs;
 
-public class MenuItemDto  // shape returned by GET requests
+public class MenuItemDto  // shape returned by list GET requests (lean / no modifiers)
 {
     public int Id { get; set; }
     public int CategoryId { get; set; }
@@ -9,6 +9,12 @@ public class MenuItemDto  // shape returned by GET requests
     public string Description { get; set; } = string.Empty;
     public decimal Price { get; set; }
     public bool IsAvailable { get; set; }
+}
+
+// single-item detail read, inherits every field from MenuItemDto
+public class MenuItemDetailDto : MenuItemDto
+{
+    public List<ModifierGroupDto> ModifierGroups { get; set; } = new();
 }
 
 public class MenuItemCreateDto  // shape accepted by POST requests

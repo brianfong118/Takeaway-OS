@@ -45,7 +45,7 @@ public class MenuItemService : IMenuItemService
             .FirstOrDefaultAsync();
     }
 
-    // --- Public reads (anonymous): the same queries with the IsAvailable = true soft-delete filter. ---
+    // Public reads (anonymous): the same queries with the IsAvailable = true soft-delete filter. ---
     public async Task<List<MenuItemDto>> GetAvailableAsync()
     {
         return await _context.MenuItems
@@ -55,11 +55,43 @@ public class MenuItemService : IMenuItemService
             .ToListAsync();
     }
 
-    public async Task<MenuItemDto?> GetAvailableByIdAsync(int id)
+    // Single-item detail read for the customer's item screen
+    public async Task<MenuItemDetailDto?> GetAvailableDetailByIdAsync(int id)
     {
         return await _context.MenuItems
             .Where(m => m.Id == id && m.IsAvailable)
-            .Select(ToDto)
+            .Select(m => new MenuItemDetailDto
+            {
+                Id = m.Id,
+                CategoryId = m.CategoryId,
+                CategoryName = m.Category.Name,
+                Name = m.Name,
+                Description = m.Description,
+                Price = m.Price,
+                IsAvailable = m.IsAvailable,
+                // go through the join table to each linked group, then each group's options.
+                ModifierGroups = m.MenuItemModifierGroups
+                    .Select(link => new ModifierGroupDto
+                    {
+                        Id = link.ModifierGroup.Id,
+                        Name = link.ModifierGroup.Name,
+                        MinSelect = link.ModifierGroup.MinSelect,
+                        MaxSelect = link.ModifierGroup.MaxSelect,
+                        IsRequired = link.ModifierGroup.IsRequired,
+                        Options = link.ModifierGroup.ModifierOptions
+                            .Where(o => o.IsActive) // disabled options never reach the picker
+                            .Select(o => new ModifierOptionDto
+                            {
+                                Id = o.Id,
+                                ModifierGroupId = o.ModifierGroupId,
+                                Name = o.Name,
+                                PriceDelta = o.PriceDelta,
+                                IsActive = o.IsActive
+                            })
+                            .ToList()
+                    })
+                    .ToList()
+            })
             .FirstOrDefaultAsync();
     }
 

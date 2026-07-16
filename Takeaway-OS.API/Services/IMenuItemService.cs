@@ -13,7 +13,8 @@ public interface IMenuItemService
 
     // Public reads (anonymous): available items only -> the soft-delete filter (IsAvailable = true).
     Task<List<MenuItemDto>> GetAvailableAsync();
-    Task<MenuItemDto?> GetAvailableByIdAsync(int id);
+    // Single-item detail read: the lean item PLUS its modifier groups (active options only)
+    Task<MenuItemDetailDto?> GetAvailableDetailByIdAsync(int id);
     Task<MenuItemDto?> CreateAsync(MenuItemCreateDto dto);   // null = invalid CategoryId
     Task<bool?> UpdateAsync(int id, MenuItemUpdateDto dto);  // null = invalid CategoryId, false = item not found, true = success
     Task<bool> DeleteAsync(int id);

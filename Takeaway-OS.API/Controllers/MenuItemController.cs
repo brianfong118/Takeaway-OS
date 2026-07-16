@@ -35,12 +35,14 @@ public class MenuItemsController : ControllerBase
         return Ok(await _menuItemService.GetAllAsync());
     }
 
-    // Public single item : 404s on a disabled item, so it's as hidden as it is in the public list.
+    // Public single item : returns the item plus its modifier groups and each group's active options,
+    // so the frontend can render the modifier picker from one request.
+    // 404s on a disabled item, so it's as hidden as it is in the public list.
     [HttpGet("{id}")]
     [AllowAnonymous]
-    public async Task<ActionResult<MenuItemDto>> GetById(int id)
+    public async Task<ActionResult<MenuItemDetailDto>> GetById(int id)
     {
-        var menuItem = await _menuItemService.GetAvailableByIdAsync(id);
+        var menuItem = await _menuItemService.GetAvailableDetailByIdAsync(id);
         if (menuItem is null) return NotFound();
         return Ok(menuItem);
     }
