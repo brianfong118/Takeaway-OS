@@ -8,6 +8,12 @@
     <UserSecretsId>f944077a-6f48-409e-b4f0-4e815f6c9191</UserSecretsId>
   </PropertyGroup>
 
+  <!-- Grants the test project access to 'internal' members (e.g. OrderService.IsValidTransition).
+       The SDK turns this into an [assembly: InternalsVisibleTo("Takeaway-OS.Tests")] attribute at build. -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="Takeaway-OS.Tests" />
+  </ItemGroup>
+
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.9" />
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.9" />

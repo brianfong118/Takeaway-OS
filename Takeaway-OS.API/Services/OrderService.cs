@@ -281,7 +281,7 @@ public class OrderService : IOrderService
     // OutForDelivery only makes sense for delivery orders 
     // Pickup orders go straight from Ready to Completed. 
     // Preparing has no path to Cancelled yet -> needs a staff-override flow that isn't built yet.
-    private static bool IsValidTransition(Order order, OrderStatus newStatus)
+    internal static bool IsValidTransition(Order order, OrderStatus newStatus)
     {
         if (newStatus == OrderStatus.Paid) return false;
 
@@ -301,7 +301,7 @@ public class OrderService : IOrderService
     // WHITELIST, not a subset check against IsValidTransition: the driver's authority is defined by exactly these two pairs, 
     // anything a driver could otherwise reach is absent by construction rather than by extra guards.
     // No OrderType check needed: (AssignDriverAsync enforces that) + OrderType is never editable after creation.
-    private static bool IsValidDriverTransition(Order order, OrderStatus newStatus)
+    internal static bool IsValidDriverTransition(Order order, OrderStatus newStatus) 
     {
         return (order.Status, newStatus) switch
         {
@@ -314,14 +314,14 @@ public class OrderService : IOrderService
     // Converts a saved Address -> single free-text line the Order snapshots and the driver reads.
     // Label ("Home"/"Work") is the customer's own nickname, not part of the postal address, so it's left out.
     // Empty lines (e.g. no Line2) are dropped so the result never has ", ," gaps.
-    private static string FormatAddress(Address address)
+    internal static string FormatAddress(Address address) 
     {
         var parts = new[] { address.Line1, address.Line2, address.City, address.Postcode }
             .Where(part => !string.IsNullOrWhiteSpace(part));
         return string.Join(", ", parts);
     }
 
-    private static OrderDto MapToDto(Order order)
+    internal static OrderDto MapToDto(Order order) 
     {
         return new OrderDto
         {

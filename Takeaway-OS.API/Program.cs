@@ -117,6 +117,10 @@ app.MapControllers();
 
 app.Run();
 
+// Top-level statements above compile into an auto-generated, internal 'Program' class. 
+// 'partial' = more of this same class is declared here
+public partial class Program { } // for factory to reference the Program class and start the app in-memory
+
 // builder.Services is the DI container itself, registering things into it before the app actually starts running.
 // AddScoped<ICategoryService, CategoryService>(): maps interface ICategoryService to the concrete class CategoryService 
 // Now when CategoriesController's constructor asks for an ICategoryService, .NET knows what to actually construct and hand it.
