@@ -1,15 +1,9 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
 # TakeawayOS
 An online ordering and order management system for an independent takeaway restaurant. Built as a portfolio project by a pre-university student. The system will be deployed and used by a real business — my parents' takeaway — replacing telephone-only ordering with a live web platform.
-
----
-## Status
-Backend in progress, no frontend yet. Built so far:
-- Menu: categories, menu items, structured/priced modifiers (modifier groups + options)
-- Orders: order + order item creation, status updates, price snapshotting
-- Drivers: profile management
-- Auth: ASP.NET Core Identity + JWT, `Owner`/`Driver`/`Customer` roles, registration + login (`/api/auth/register`, `/api/auth/login`)
-
-Not started: payments (Stripe), business hours enforcement, frontend.
 
 ---
 ## Tech Stack
@@ -75,6 +69,16 @@ These are deliberate choices, not defaults. If asked to change them, flag it fir
 
 **Business hours are enforced server-side, not just shown in the UI**: An `OpeningHours` table holds `DayOfWeek` + `OpenTime` + `CloseTime` (multiple rows per day supported, for a split shift). A manual override flag (e.g. `IsTemporarilyClosed`, with an optional reason) lets the owner shut ordering for a one-off holiday without touching the weekly schedule. The check happens in the `Services` layer at order submission time — the frontend shows the same status as a "we're closed" banner, but the backend is what actually rejects the order. Time comparisons use a configured IANA time zone (`RESTAURANT_TIMEZONE`, defaulting to `Europe/London`), not the server's own clock, since Render's servers run in UTC.
 
+As built, the specifics:
+- `IsTemporarilyClosed` + `ClosureReason` live on a **single-row `RestaurantSettings` table** (`Id` always 1, seeded by the `AddBusinessHours` migration via `HasData`). It's a plain flag with **no expiry** — it stays on until the Owner clears it, so forgetting to flip it back means the shop silently takes no orders. An auto-expiring `ClosedUntil` was considered and rejected for v1 simplicity; revisit if that actually bites.
+- **A closed shop is a `409 Conflict`, not a `400`.** The basket isn't malformed — there's nothing for the customer to fix — so `OrderCreateResult.RestaurantClosed` distinguishes it from ordinary validation failures, and the frontend uses that to show the "we're closed" banner rather than a field error.
+- **A window with `CloseTime <= OpenTime` runs past midnight** (e.g. Fri 17:00 → 00:30). That's how the schedule encodes late closing — no end-date column. `BusinessHoursService` therefore checks *yesterday's* rows as well as today's, so at 00:15 on Saturday the shop is open on **Friday's** row. "Closed" is simply the absence of any matching window; there is no `IsClosed` column.
+- `IBusinessHoursService.GetStatusAsync()` has exactly two callers — the public `GET /api/openinghours/status` endpoint (the banner) and `OrderService.CreateAsync` (the actual rejection). Sharing one method is what guarantees the banner can't say "open" while the server refuses the order. Keep it that way.
+- Owner-only writes: `POST`/`PUT`/`DELETE /api/openinghours` for the schedule, and `PUT /api/openinghours/closure` for the holiday override (idempotent — reopen by PUTting `IsTemporarilyClosed: false` to the same route, which also clears the reason so a stale "Closed for Christmas" can't resurface). The closure PUT returns the resulting `RestaurantStatusDto`, so the owner immediately sees what the customer sees.
+- **Overlapping windows are rejected**, and the check is not day-by-day: a past-midnight window physically occupies two days, so Fri 17:00→00:30 really does clash with a Sat 00:00 window despite the rows naming different days. `BusinessHoursService` flattens every window onto a circular "minutes since Sunday 00:00" weekly timeline and compares intervals there. `OpenTime == CloseTime` is also rejected — ambiguous between a zero-length window and a full 24 hours.
+- An invalid window (overlap / zero-length) is a plain **400** — the owner can fix it by picking different times. That's the opposite call to the customer-facing 409 above, and deliberately so: 409 there means "nothing about your request is wrong, we're just shut".
+- Real opening hours are the owner's *data*, so they stay out of migrations — only the `RestaurantSettings` singleton is seeded structurally. `Data/seed-opening-hours.sql` exists to bulk-load a dev schedule.
+
 **Customer accounts are optional, not required**: Guest checkout (name/phone/address/notes, no login) stays fully supported and is the default path — accounts are additive on top of it, not a replacement. A `Customer` role sits alongside the `Owner`/`Driver` roles in Identity — there is no `Staff` role (see V1 Scope). `Orders.CustomerId` is a nullable FK — null for guest orders, populated for logged-in orders. Guest contact fields (name/phone/address) stay on `Orders` regardless of whether a `CustomerId` is present, since delivery/contact needs them either way. A registered customer gets saved addresses, order history, and faster repeat checkout.
 
 **Order modifiers are structured and priced, not free text**: Static, priced options per menu item — "Add peppers +£0.50", "Remove onions", "Extra chicken +£1.50" — rather than a notes field for anything that affects price or kitchen prep. Schema, following the same price-snapshotting principle as `OrderItems`:
@@ -85,9 +89,11 @@ These are deliberate choices, not defaults. If asked to change them, flag it fir
 - Order total becomes: `sum(OrderItem.UnitPrice * Quantity) + sum(OrderItemModifiers.PriceDelta)`.
 - A short optional free-text notes field stays alongside the structured modifiers, for one-off requests that don't fit a static option — kitchens always get something that doesn't fit a dropdown. unsure how to price this yet.
 
-**Owner account bootstrapping is self-closing, not env-seeded**: There's no separate "create the first Owner" step. `POST /api/auth/register` accepts `role: "Owner"` unauthenticated, but only while zero Owner accounts exist — the moment the first Owner is created, that path rejects every future attempt with a 403. There's deliberately no route to add a second Owner afterward.
+**Owner account bootstrapping is self-closing, not env-seeded**: There's no separate "create the first Owner" step. `POST /api/auth/register` accepts `role: "Owner"` unauthenticated, but only while zero Owner accounts exist — `AuthService` checks `UserManager.GetUsersInRoleAsync(Roles.Owner)` before allowing it. The moment the first Owner is created, that branch rejects every future attempt with a 403. There's deliberately no route to add a second Owner afterward — if the business ever needs more than one, that's a gap to solve later, not an oversight.
 
-**Driver accounts are Owner-created, not self-registered**: Drivers don't sign themselves up through a public form. The same `POST /api/auth/register` endpoint accepts `role: "Driver"`, but only succeeds if the caller is already authenticated as an Owner. There is no standalone driver-create endpoint — a Driver's login and profile row are always created together in one call.
+**Driver accounts are Owner-created, not self-registered**: Drivers don't sign themselves up through a public form. The same `POST /api/auth/register` endpoint accepts `role: "Driver"`, but only succeeds if the caller is already authenticated as an Owner — checked via the caller's JWT role claim (`User.IsInRole(Roles.Owner)` in `AuthController`), not a flag in the request body. There is no standalone `POST /api/drivers` create endpoint; a Driver's `ApplicationUser` login and `Driver` profile row are always created together in one `AuthService.RegisterAsync` call.
+
+**JWTs only, no refresh tokens in v1**: `/api/auth/login` and `/api/auth/register` return a JWT (role claim included) with a 1-day expiry. There's no refresh-token flow — once it expires, the user just logs in again. Acceptable tradeoff for this app's scope; revisit only if that friction becomes a real complaint.
 
 ## V1 Scope — Do Not Exceed Without Asking
 **In scope:**

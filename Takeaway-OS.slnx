@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="Takeaway-OS.API/Takeaway-OS.API.csproj" />
+  <Project Path="Takeaway-OS.Tests/Takeaway-OS.Tests.csproj" />
+</Solution>
