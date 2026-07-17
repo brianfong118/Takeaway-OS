@@ -16,6 +16,20 @@ public class OrderCreateResult
     // maps to 409 Conflict instead
     // A bool rather than an enum because closed-vs-invalid is the only split that exists.
     public bool RestaurantClosed { get; set; }
+
+    // The Stripe PaymentIntent's client secret, set alongside a successful Order.
+    // Handed to the browser so it can complete the payment; it's payment-scoped, not our secret key.
+    public string? ClientSecret { get; set; }
+}
+
+// MarkOrderPaidAsync's outcome. The webhook returns 200 for all of these (receiving the event always = "handled" 
+// but they're distinct so the handler can log a mismatch 
+public enum OrderPaymentResult
+{
+    MarkedPaid,     // order was Pending, now Paid
+    AlreadyPaid,    // already Paid -> a duplicate webhook delivery, safely ignored (idempotent)
+    OrderNotFound,  // no order carries this PaymentIntentId
+    NotPayable      // order exists but isn't Pending (e.g. Cancelled) -> don't overwrite its status
 }
 
 // UpdateStatusAsync's outcome DOES need an enum: OrderNotFound (404) and
@@ -67,6 +81,9 @@ public interface IOrderService
     // Reuses OrderStatusUpdateResult because the outcomes are identical in shape 
     // diff from owners is WHICH transitions are allowed and the ownership scoping, both handled inside.
     Task<OrderStatusUpdateResult> UpdateStatusByDriverAsync(int id, int applicationUserId, OrderStatusUpdateDto dto);
+
+    // Called ONLY by the Stripe webhook (never a normal status update) to move an order to Paid.
+    Task<OrderPaymentResult> MarkOrderPaidAsync(string paymentIntentId);
 
     // No DeleteAsync: orders are never deleted, only moved to Cancelled via UpdateStatusAsync
 }

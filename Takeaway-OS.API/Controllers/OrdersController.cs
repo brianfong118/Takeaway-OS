@@ -72,7 +72,7 @@ public class OrdersController : ControllerBase
 
     [HttpPost]
     [AllowAnonymous] // guest checkout must stay open; logged-in customers also hit this same endpoint
-    public async Task<ActionResult<OrderDto>> Create(OrderCreateDto dto)
+    public async Task<ActionResult<OrderCreateResponseDto>> Create(OrderCreateDto dto)
     {
         // AllowAnonymous -> UseAuthentication still decodes an Authorization header if one was sent
         var result = await _orderService.CreateAsync(dto, User.GetApplicationUserId());
@@ -82,7 +82,13 @@ public class OrdersController : ControllerBase
 
         if (result.Order is null) return BadRequest(result.Error); // Error is always set when Order is null
 
-        return CreatedAtAction(nameof(GetById), new { id = result.Order.Id }, result.Order);
+        // Hand back the order AND the Stripe client secret so the browser can start the payment.
+        var response = new OrderCreateResponseDto
+        {
+            Order = result.Order,
+            ClientSecret = result.ClientSecret! // always set when Order is non-null
+        };
+        return CreatedAtAction(nameof(GetById), new { id = result.Order.Id }, response);
     }
 
     // Separate, narrow endpoint for status changes only  

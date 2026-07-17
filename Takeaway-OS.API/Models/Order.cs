@@ -25,5 +25,11 @@ public class Order
     public string Notes { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
+    // The id of this order's Stripe PaymentIntent, set when the order is created.
+    // Nullable: existing orders predate Stripe, so the column must allow null on those rows.
+    // link the webhook uses -> it finds the order by this id and marks it Paid,
+    // which is also what makes duplicate webhook deliveries safe (idempotent) to process.
+    public string? StripePaymentIntentId { get; set; }
+
     public ICollection<OrderItem> OrderItems { get; set; } = new List<OrderItem>();
 }

@@ -9,11 +9,13 @@ public class OrderService : IOrderService
 {
     private readonly AppDbContext _context;
     private readonly IBusinessHoursService _businessHoursService;
+    private readonly IStripeService _stripeService;
 
-    public OrderService(AppDbContext context, IBusinessHoursService businessHoursService)
+    public OrderService(AppDbContext context, IBusinessHoursService businessHoursService, IStripeService stripeService)
     {
         _context = context;
         _businessHoursService = businessHoursService;
+        _stripeService = stripeService;
     }
 
     public async Task<List<OrderDto>> GetAllAsync()
@@ -240,7 +242,19 @@ public class OrderService : IOrderService
         _context.Orders.Add(order);
         await _context.SaveChangesAsync(); // one call persists Order + every OrderItem + every OrderItemModifier together, via the object graph built above
 
-        return new OrderCreateResult { Order = MapToDto(order) };
+        // Create the Stripe PaymentIntent from calced total + that Db generated Id, 
+        // save once more to store the PaymentIntentId (the webhook's lookup key).
+        // If Stripe throws here (bad key / network), the exception propagates to a 500 and the order is left Pending with no payment 
+        var total = ComputeTotal(order);
+        var paymentIntent = await _stripeService.CreatePaymentIntentAsync(total, order.Id);
+        order.StripePaymentIntentId = paymentIntent.PaymentIntentId;
+        await _context.SaveChangesAsync();
+
+        return new OrderCreateResult
+        {
+            Order = MapToDto(order),
+            ClientSecret = paymentIntent.ClientSecret
+        };
     }
 
     public async Task<OrderStatusUpdateResult> UpdateStatusAsync(int id, OrderStatusUpdateDto dto)
@@ -350,8 +364,33 @@ public class OrderService : IOrderService
                 }).ToList()
             }).ToList(),
             // Never stored — always derived fresh from the line items so it can't drift from them.
-            Total = order.OrderItems.Sum(oi => oi.UnitPrice * oi.Quantity)
-                  + order.OrderItems.Sum(oi => oi.OrderItemModifiers.Sum(m => m.PriceDelta))
+            Total = ComputeTotal(order)
         };
+    }
+
+    // The authoritative order total: sum(UnitPrice * Quantity) + sum(modifier PriceDeltas).
+    // Extracted so the amount we charge in Stripe and the Total we show the client come from the
+    // exact same calculation -> never disagree
+    internal static decimal ComputeTotal(Order order)
+    {
+        return order.OrderItems.Sum(oi => oi.UnitPrice * oi.Quantity)
+             + order.OrderItems.Sum(oi => oi.OrderItemModifiers.Sum(m => m.PriceDelta));
+    }
+
+    // The webhook's state change, kept here with every other Order status transition.
+    // Idempotent by design
+    // Deliberately bypasses IsValidTransition -> the one authorized path to Paid.
+    public async Task<OrderPaymentResult> MarkOrderPaidAsync(string paymentIntentId)
+    {
+        var order = await _context.Orders
+            .FirstOrDefaultAsync(o => o.StripePaymentIntentId == paymentIntentId);
+
+        if (order is null) return OrderPaymentResult.OrderNotFound;
+        if (order.Status == OrderStatus.Paid) return OrderPaymentResult.AlreadyPaid; // duplicate event -> no-op
+        if (order.Status != OrderStatus.Pending) return OrderPaymentResult.NotPayable; // e.g. Cancelled -> don't resurrect
+
+        order.Status = OrderStatus.Paid;
+        await _context.SaveChangesAsync();
+        return OrderPaymentResult.MarkedPaid;
     }
 }

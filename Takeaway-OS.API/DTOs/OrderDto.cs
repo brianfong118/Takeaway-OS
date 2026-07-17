@@ -77,6 +77,14 @@ public class OrderCreateDto : IValidatableObject  // shape accepted by POST /api
     }
 }
 
+// Shape returned by POST /api/orders. Bundles the created order with the Stripe client secret
+// the browser needs to complete payment, so the frontend gets both from one response.
+public class OrderCreateResponseDto
+{
+    public OrderDto Order { get; set; } = null!;
+    public string ClientSecret { get; set; } = string.Empty;
+}
+
 // Separate, narrow DTO for the staff status-update endpoint
 // NOT reusing OrderUpdateDto (there isn't one: customer/address fields aren't
 // editable after placement, only Status changes, via its own endpoint).

@@ -56,6 +56,11 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole<int>>(options =>
 var jwtSecret = builder.Configuration["JWT_SECRET"]
     ?? throw new InvalidOperationException("JWT_SECRET is not configured.");
 
+// Stripe.NET reads this one global key for every API call (e.g. creating a PaymentIntent).
+// Set once here from config/env; kept server-side only. 
+// If missing, Stripe calls fail w/ "No API key provided" (only affects order creation, not the rest of the app)
+Stripe.StripeConfiguration.ApiKey = builder.Configuration["STRIPE_SECRET_KEY"];
+
 // AddIdentity defaults to cookie-based auth,
 // doesn't suit a stateless API called from a separate frontend origin.
 // AddAuthentication + AddJwtBearer overrides that: instead of a session cookie, 
@@ -96,6 +101,7 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IBusinessHoursService, BusinessHoursService>();
 builder.Services.AddScoped<IAddressService, AddressService>();
 builder.Services.AddScoped<ICustomerService, CustomerService>();
+builder.Services.AddScoped<IStripeService, StripeService>();
 // Register the "X"Service with the DI container, so that it can be injected into controllers or other services that require it.
 
 var app = builder.Build();
