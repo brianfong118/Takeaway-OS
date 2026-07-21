@@ -1,0 +1,90 @@
+/* Full-height column so the footer sits at the bottom of short pages instead of mid-screen. */
+.layout {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+.layout__header {
+  position: sticky; /* stays put once it would scroll away -> basket/nav always reachable */
+  top: 0;
+  z-index: 10; /* above page content, so scrolled content passes underneath */
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+}
+
+/* The header spans the full window width (for its background and border), while this inner
+   bar constrains the actual contents to the same width as the page below it. */
+.layout__bar {
+  max-width: var(--content-width);
+  margin-inline: auto;
+  padding: var(--space-3) var(--space-4);
+  display: flex;
+  justify-content: space-between; /* brand hard left, nav hard right */
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.layout__brand {
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: -0.02em; /* large bold text reads better slightly tightened */
+  color: var(--text);
+}
+
+.layout__brand-accent {
+  color: var(--brand);
+}
+
+.layout__nav {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.layout__link {
+  padding: var(--space-2) var(--space-2);
+  color: var(--text-muted);
+  font-weight: 500;
+  border-radius: var(--radius);
+  transition: color 0.15s ease; /* softens the hover change; keep it short or it feels laggy */
+}
+
+.layout__link:hover {
+  color: var(--text);
+}
+
+.layout__link--active {
+  color: var(--brand);
+  font-weight: 600;
+}
+
+/* flex: 1 absorbs all leftover vertical space, which is what pushes the footer down. */
+.layout__main {
+  flex: 1;
+  width: 100%;
+  max-width: var(--content-width);
+  margin-inline: auto;
+  padding: var(--space-5) var(--space-4);
+}
+
+.layout__footer {
+  border-top: 1px solid var(--border);
+  padding: var(--space-4);
+  text-align: center;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+/* Phones: reclaim the side padding, which is a large share of a 375px-wide screen. */
+@media (max-width: 640px) {
+  .layout__bar,
+  .layout__main {
+    padding-inline: var(--space-3);
+  }
+
+  .layout__nav {
+    gap: var(--space-3);
+  }
+}
