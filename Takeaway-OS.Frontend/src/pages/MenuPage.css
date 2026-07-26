@@ -1,0 +1,37 @@
+.menu__title {
+  margin-bottom: var(--space-5);
+}
+
+.menu__section + .menu__section {
+  margin-top: var(--space-6); /* gap between sections only, never above the first one */
+}
+
+.menu__category {
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--border);
+  margin-bottom: var(--space-4);
+}
+
+/* auto-fill + minmax gives a responsive grid with no media queries: the browser fits as many
+   280px+ columns as the width allows, then shares the leftover space between them. */
+.menu__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--space-3);
+}
+
+.menu__state {
+  padding: var(--space-6) 0;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.menu__state--error {
+  color: var(--danger);
+}
+
+.menu__state-detail {
+  margin-top: var(--space-2);
+  font-size: 0.9375rem;
+  color: var(--text-muted);
+}
