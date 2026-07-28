@@ -1,9 +1,12 @@
 import { Link, NavLink, Outlet } from 'react-router-dom';
+import { useBasket } from '../hooks/useBasket.js';
 import './Layout.css';
 
 // Shared chrome for every customer-facing page. Rendered by the layout route in App.jsx,
 // so pages themselves contain only their own content.
 export default function Layout() {
+  const { itemCount } = useBasket();
+
   // Returned by NavLink's className function on every navigation -> keeps the active-state
   // logic in one place instead of repeating the ternary on each link.
   const linkClass = ({ isActive }) =>
@@ -27,9 +30,14 @@ export default function Layout() {
                 </NavLink>
               </li>
               <li>
-                {/* These routes are not built yet, so they land on NotFoundPage for now. */}
                 <NavLink to="/basket" className={linkClass}>
                   Basket
+                  {/* Explicit > 0: a bare `itemCount &&` would render a literal 0 when empty. */}
+                  {itemCount > 0 && (
+                    <span className="layout__badge" aria-label={`${itemCount} items in basket`}>
+                      {itemCount}
+                    </span>
+                  )}
                 </NavLink>
               </li>
               <li>

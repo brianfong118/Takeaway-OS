@@ -1,0 +1,170 @@
+.basket,
+.basket__empty {
+  max-width: 640px;
+}
+
+.basket__empty {
+  padding: var(--space-6) 0;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.basket__empty p {
+  margin: var(--space-3) 0 var(--space-4);
+}
+
+.basket__cta {
+  display: inline-block;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius);
+  background: var(--brand);
+  color: var(--text-inverse);
+  font-weight: 600;
+}
+
+.basket__cta:hover {
+  background: var(--brand-dark);
+}
+
+.basket__title {
+  margin-bottom: var(--space-4);
+}
+
+.basket__line {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-4) 0;
+  border-top: 1px solid var(--border);
+}
+
+.basket__line-name {
+  font-size: 1rem;
+}
+
+.basket__modifiers {
+  margin-top: var(--space-1);
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+.basket__note {
+  margin-top: var(--space-2);
+  font-size: 0.875rem;
+  font-style: italic;
+  color: var(--text-muted);
+}
+
+/* Fixed column on the right so totals line up down the list regardless of name length. */
+.basket__line-side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+
+.basket__line-total {
+  font-weight: 600;
+}
+
+.basket__quantity {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0 var(--space-2);
+}
+
+.basket__quantity button {
+  border: 0;
+  background: none;
+  padding: var(--space-1) var(--space-2);
+  font-size: 1.125rem;
+  color: var(--text);
+}
+
+.basket__quantity button:disabled {
+  color: var(--text-muted);
+  cursor: not-allowed;
+}
+
+.basket__remove {
+  border: 0;
+  background: none;
+  padding: 0;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  text-decoration: underline;
+}
+
+.basket__remove:hover {
+  color: var(--danger);
+}
+
+.basket__summary {
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 2px solid var(--border); /* heavier than the line dividers, so it reads as a total */
+}
+
+.basket__subtotal {
+  display: flex;
+  justify-content: space-between;
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.basket__disclaimer {
+  margin-top: var(--space-1);
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+.basket__checkout {
+  width: 100%;
+  margin-top: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border: 0;
+  border-radius: var(--radius);
+  background: var(--brand);
+  color: var(--text-inverse);
+  font-weight: 600;
+}
+
+.basket__checkout:hover:not(:disabled) {
+  background: var(--brand-dark);
+}
+
+.basket__checkout:disabled {
+  background: var(--text-muted);
+  cursor: not-allowed;
+}
+
+.basket__clear {
+  display: block;
+  margin: var(--space-3) auto 0;
+  border: 0;
+  background: none;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  text-decoration: underline;
+}
+
+.basket__clear:hover {
+  color: var(--danger);
+}
+
+/* Phones: the side column would squash the item name, so stack it under instead. */
+@media (max-width: 480px) {
+  .basket__line {
+    flex-direction: column;
+  }
+
+  .basket__line-side {
+    align-items: flex-start;
+    flex-direction: row;
+    gap: var(--space-4);
+  }
+}

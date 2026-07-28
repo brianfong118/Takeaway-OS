@@ -1,0 +1,187 @@
+.item {
+  max-width: 640px; /* narrower than the grid: this is a reading and form column */
+}
+
+.item__back {
+  display: inline-block;
+  margin-bottom: var(--space-4);
+  color: var(--text-muted);
+  font-size: 0.9375rem;
+}
+
+.item__back:hover {
+  color: var(--brand);
+}
+
+.item__header {
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--border);
+}
+
+.item__price {
+  margin-top: var(--space-1);
+  font-weight: 600;
+  color: var(--brand);
+}
+
+.item__description {
+  margin-top: var(--space-2);
+  color: var(--text-muted);
+}
+
+/* fieldset ships with a border and odd default padding in every browser. */
+.item__group {
+  border: 0;
+  padding: 0;
+  margin: var(--space-5) 0 0;
+}
+
+.item__group-legend {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+  font-weight: 600;
+}
+
+.item__group-rule {
+  font-weight: 400;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+.item__group-required {
+  padding: 2px var(--space-2);
+  border-radius: var(--radius);
+  background: var(--brand-bg);
+  color: var(--brand);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+/* A label wrapping its input means clicking the text also toggles it, which is a much
+   larger target than the box alone. */
+.item__option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: var(--space-2);
+  cursor: pointer;
+}
+
+.item__option:hover {
+  border-color: var(--brand);
+}
+
+/* :has() styles the label based on the state of the input inside it, which previously
+   needed a JS class toggle. */
+.item__option:has(input:checked) {
+  border-color: var(--brand);
+  background: var(--brand-bg);
+}
+
+.item__option:has(input:disabled) {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.item__option input {
+  accent-color: var(--brand); /* recolours the native tick/dot without rebuilding the control */
+}
+
+.item__option-name {
+  flex: 1; /* absorbs the middle space, pushing the price delta to the right edge */
+}
+
+.item__option-delta {
+  color: var(--text-muted);
+  font-size: 0.9375rem;
+}
+
+.item__notes {
+  margin-top: var(--space-5);
+}
+
+.item__notes-input {
+  width: 100%;
+  margin-top: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  resize: vertical; /* horizontal resizing would break the column layout */
+}
+
+.item__footer {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: var(--space-5);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border);
+}
+
+.item__quantity {
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.item__quantity button {
+  width: 2.5rem;
+  height: 2.5rem;
+  border: 0;
+  background: none;
+  font-size: 1.25rem;
+  color: var(--text);
+}
+
+.item__quantity button:disabled {
+  color: var(--text-muted);
+  cursor: not-allowed;
+}
+
+.item__quantity-value {
+  min-width: 2rem; /* fixed width, so the buttons do not shift when 9 becomes 10 */
+  text-align: center;
+  font-weight: 600;
+}
+
+.item__add {
+  flex: 1;
+  padding: var(--space-3) var(--space-4);
+  border: 0;
+  border-radius: var(--radius);
+  background: var(--brand);
+  color: var(--text-inverse);
+  font-weight: 600;
+}
+
+.item__add:hover:not(:disabled) {
+  background: var(--brand-dark);
+}
+
+.item__add:disabled {
+  background: var(--text-muted);
+  cursor: not-allowed;
+}
+
+.item__unmet {
+  margin-top: var(--space-3);
+  color: var(--warning);
+  font-size: 0.9375rem;
+}
+
+.item__state {
+  padding: var(--space-6) 0;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.item__state--error {
+  color: var(--danger);
+}
