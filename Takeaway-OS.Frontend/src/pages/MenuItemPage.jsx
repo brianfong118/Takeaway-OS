@@ -136,7 +136,10 @@ function MenuItemView({ id }) {
 
       {item.modifierGroups.map((group) => {
         const selected = selections[group.id] ?? [];
-        const atCap = selected.length >= group.maxSelect;
+        // Only a multi-select group can be "full". A pick-one group is never at cap for this
+        // purpose: choosing another option replaces the current one, so disabling the others
+        // would lock the customer into their first click (a radio cannot be unticked).
+        const atCap = group.maxSelect > 1 && selected.length >= group.maxSelect;
 
         return (
           // fieldset/legend is the semantic grouping for a set of related choices,
