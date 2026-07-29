@@ -1,0 +1,60 @@
+/* Only the pieces the checkout stylesheet does not already cover. The centred states
+   (.checkout__empty, .checkout__cta, .checkout__error) are borrowed from it as-is, so the
+   payment flow keeps looking like a continuation of checkout rather than a separate site. */
+
+.payment {
+  max-width: 640px; /* same measure as basket and checkout, so the three read as one flow */
+}
+
+.payment__order {
+  margin-bottom: var(--space-4);
+  color: var(--text-muted);
+  font-size: 0.9375rem;
+}
+
+/* Same flex-column as .checkout__form. The gap is what separates Stripe's iframe from
+   the pay button, since the iframe brings no margins of its own. */
+.payment__form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/* Deliberately a near-copy of .checkout__submit rather than a shared class. Extracting a real
+   .btn is worth doing once a third page needs it*/
+.payment__submit {
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  border: 0;
+  border-radius: var(--radius);
+  background: var(--brand);
+  color: var(--text-inverse);
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.payment__submit:hover:not(:disabled) {
+  background: var(--brand-dark);
+}
+
+/* Covers both disabled reasons: Stripe.js still loading, and a confirmation in flight. */
+.payment__submit:disabled {
+  background: var(--text-muted);
+  cursor: not-allowed;
+}
+
+.payment__note {
+  margin-top: var(--space-3);
+  margin-bottom: var(--space-4);
+  color: var(--text-muted);
+  font-size: 0.8125rem;
+  text-align: center;
+}
+
+/* The one line on the success panel that should carry weight. Green because it confirms an
+   outcome, matching the status colours the order badges will use. */
+.payment__amount {
+  color: var(--success);
+  font-size: 1.25rem;
+  font-weight: 600;
+}
