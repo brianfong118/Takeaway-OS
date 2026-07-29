@@ -1,0 +1,196 @@
+.checkout,
+.checkout__empty {
+  max-width: 640px; /* same measure as the basket, so the two pages feel like one flow */
+}
+
+.checkout__empty {
+  padding: var(--space-6) 0;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.checkout__empty p {
+  margin: var(--space-3) 0 var(--space-4);
+}
+
+.checkout__cta {
+  display: inline-block;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius);
+  background: var(--brand);
+  color: var(--text-inverse);
+  font-weight: 600;
+}
+
+.checkout__cta:hover {
+  background: var(--brand-dark);
+}
+
+.checkout__title {
+  margin-bottom: var(--space-4);
+}
+
+/* Warning, not danger: the shop being shut is not the customer's mistake and nothing they
+   typed is wrong , the red error styling below would misattribute blame. */
+.checkout__banner {
+  margin-bottom: var(--space-4);
+  padding: var(--space-3);
+  border: 1px solid var(--warning);
+  border-radius: var(--radius);
+  background: var(--warning-bg);
+  color: var(--warning);
+}
+
+.checkout__error {
+  margin-bottom: var(--space-4);
+  padding: var(--space-3);
+  border: 1px solid var(--danger);
+  border-radius: var(--radius);
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
+/* Flex column rather than margins on each child: one gap value spaces every field equally,
+   including ones that appear and disappear (the delivery address). */
+.checkout__form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/* Left as a block box on purpose. A <legend> is laid out by special rules carved into the
+   fieldset's border, and making the fieldset a flex container makes browsers disagree about
+   where the legend goes — so the radios are spaced inline instead. */
+.checkout__group {
+  border: 0; /* fieldset ships with a browser default border that does not match the design */
+  padding: 0;
+}
+
+.checkout__group legend {
+  font-weight: 600;
+  margin-bottom: var(--space-2);
+}
+
+.checkout__radio {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-right: var(--space-4);
+  cursor: pointer;
+}
+
+.checkout__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.checkout__field label {
+  font-weight: 600;
+  font-size: 0.9375rem;
+}
+
+.checkout__field input,
+.checkout__field textarea {
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  /* Form controls do not inherit the page font by default — without this they fall back to
+     the browser's own UI font and look pasted in from another site. */
+  font-family: inherit;
+  font-size: 1rem;
+}
+
+.checkout__field textarea {
+  resize: vertical; /* horizontal dragging would break the column layout */
+}
+
+.checkout__field input:focus,
+.checkout__field textarea:focus {
+  outline: 2px solid var(--brand);
+  outline-offset: 1px;
+  border-color: var(--brand);
+}
+
+/* :user-invalid, not :invalid. Plain :invalid matches an empty required field from the moment
+   the page loads, so every box would be red before a single keystroke. :user-invalid only
+   matches once the customer has actually interacted with the field and left it wrong. */
+.checkout__field input:user-invalid,
+.checkout__field textarea:user-invalid {
+  border-color: var(--danger);
+}
+
+.checkout__summary {
+  padding-top: var(--space-4);
+  border-top: 2px solid var(--border);
+}
+
+.checkout__summary h2 {
+  font-size: 1rem;
+  margin-bottom: var(--space-3);
+}
+
+.checkout__line {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+  font-size: 0.9375rem;
+}
+
+.checkout__line-mods {
+  display: block; /* forces the modifier list onto its own line under the item name */
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+.checkout__subtotal {
+  display: flex;
+  justify-content: space-between;
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border);
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.checkout__disclaimer {
+  margin-top: var(--space-1);
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+.checkout__submit {
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  border: 0;
+  border-radius: var(--radius);
+  background: var(--brand);
+  color: var(--text-inverse);
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.checkout__submit:hover:not(:disabled) {
+  background: var(--brand-dark);
+}
+
+/* Covers both disabled states — submitting and closed. Grey plus not-allowed reads as
+   "not right now" rather than "broken". */
+.checkout__submit:disabled {
+  background: var(--text-muted);
+  cursor: not-allowed;
+}
+
+.checkout__back {
+  text-align: center;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  text-decoration: underline;
+}
+
+.checkout__back:hover {
+  color: var(--text);
+}

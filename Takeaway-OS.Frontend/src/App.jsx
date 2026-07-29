@@ -3,6 +3,8 @@ import Layout from './components/Layout.jsx';
 import MenuPage from './pages/MenuPage.jsx';
 import MenuItemPage from './pages/MenuItemPage.jsx';
 import BasketPage from './pages/BasketPage.jsx';
+import CheckoutPage from './pages/CheckoutPage.jsx';
+import PaymentPage from './pages/PaymentPage.jsx';
 import NotFoundPage from './pages/NotFoundPage.jsx';
 
 // The app's route table. Kept in one file so every URL the app answers to is visible at a glance.
@@ -17,6 +19,12 @@ export default function App() {
         {/* ":id" is a URL parameter, read back inside the page with useParams(). */}
         <Route path="menu/:id" element={<MenuItemPage />} />
         <Route path="basket" element={<BasketPage />} />
+        <Route path="checkout" element={<CheckoutPage />} />
+
+        {/* Reached only by CheckoutPage navigating here after an order is created. Still a
+            normal, refreshable URL: the order id and client secret come from sessionStorage,
+            not from navigation state, so reloading /pay keeps working. */}
+        <Route path="pay" element={<PaymentPage />} />
 
         {/* Inside the layout on purpose -> an unknown URL still gets the nav to escape with. */}
         <Route path="*" element={<NotFoundPage />} />

@@ -122,24 +122,22 @@
   color: var(--text-muted);
 }
 
+/* Now an <a>, which is inline by default: display:block is what lets width and vertical
+   padding apply at all, and text-align centres the label the way a button did for free. */
 .basket__checkout {
+  display: block;
   width: 100%;
   margin-top: var(--space-4);
   padding: var(--space-3) var(--space-4);
-  border: 0;
   border-radius: var(--radius);
   background: var(--brand);
   color: var(--text-inverse);
   font-weight: 600;
+  text-align: center;
 }
 
-.basket__checkout:hover:not(:disabled) {
+.basket__checkout:hover {
   background: var(--brand-dark);
-}
-
-.basket__checkout:disabled {
-  background: var(--text-muted);
-  cursor: not-allowed;
 }
 
 .basket__clear {

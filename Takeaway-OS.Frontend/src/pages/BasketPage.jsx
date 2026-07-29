@@ -86,10 +86,12 @@ export default function BasketPage() {
             order is placed, and that figure is what gets charged. */}
         <p className="basket__disclaimer">Confirmed when you check out.</p>
 
-        {/* Enabled once the checkout page exists. */}
-        <button type="button" className="basket__checkout" disabled>
+        {/* A Link, not a button: checkout is a destination, so it should be a real anchor the
+            customer can middle-click or open in a new tab. Styled to look like the button it
+            replaces. */}
+        <Link to="/checkout" className="basket__checkout">
           Checkout
-        </button>
+        </Link>
 
         <button type="button" className="basket__clear" onClick={clearBasket}>
           Clear basket
