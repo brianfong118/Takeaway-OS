@@ -22,6 +22,15 @@ export function clearToken() {
   localStorage.removeItem(TOKEN_KEY);
 }
 
+// Set by AuthProvider so it hears about a token this layer rejects. Without it, clearToken()
+// below empties localStorage while React state still says "logged in as Owner".
+// A single slot, not a list of listeners: only one thing in the app owns who is logged in.
+let onUnauthorized = null;
+
+export function setUnauthorizedHandler(handler) {
+  onUnauthorized = handler;
+}
+
 
 export class ApiError extends Error {
   constructor(message, status, body) {
@@ -78,8 +87,11 @@ async function request(path, { method = 'GET', body, auth = true } = {}) {
     : await response.text();
 
   if (!response.ok) { 
-    if (response.status === 401) {
+    // `token` guards this so a failed login (auth: false, so nothing sent) can't log out the
+    // session the user already had. Only a credential we actually sent gets binned.
+    if (response.status === 401 && token) {
       clearToken();
+      onUnauthorized?.();
     }
     throw new ApiError(extractErrorMessage(data, response.status), response.status, data);
   }

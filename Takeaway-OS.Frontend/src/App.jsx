@@ -6,6 +6,7 @@ import BasketPage from './pages/BasketPage.jsx';
 import CheckoutPage from './pages/CheckoutPage.jsx';
 import PaymentPage from './pages/PaymentPage.jsx';
 import OrderConfirmationPage from './pages/OrderConfirmationPage.jsx';
+import LoginPage from './pages/LoginPage.jsx';
 import NotFoundPage from './pages/NotFoundPage.jsx';
 
 // The app's route table. Kept in one file so every URL the app answers to is visible at a glance.
@@ -31,6 +32,10 @@ export default function App() {
             read, so unlike /pay this page needs no sessionStorage at all - it works from a
             bookmark, in a new tab, or days later. */}
         <Route path="order/:token" element={<OrderConfirmationPage />} />
+
+        {/* Owner and Driver sign in here; customers never have to. ProtectedRoute sends anyone
+            who hits a guarded URL logged-out to this path, with where they came from attached. */}
+        <Route path="login" element={<LoginPage />} />
 
         {/* Inside the layout on purpose -> an unknown URL still gets the nav to escape with. */}
         <Route path="*" element={<NotFoundPage />} />

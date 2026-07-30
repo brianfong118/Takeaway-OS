@@ -49,6 +49,7 @@
   font-weight: 500;
   border-radius: var(--radius);
   transition: color 0.15s ease; /* softens the hover change; keep it short or it feels laggy */
+  white-space: nowrap; /* stops the basket badge dropping below its label on a crowded bar */
 }
 
 .layout__link:hover {
@@ -94,6 +95,53 @@
   color: var(--text-muted);
 }
 
+.layout__account {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.layout__role {
+  padding: 0.125rem var(--space-2);
+  border-radius: 999px;
+  background: var(--brand-bg);
+  color: var(--brand-dark);
+  font-size: 0.75rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* min-width: 0 lets a flex item shrink below its content width — without it the ellipsis
+   never appears and a long email pushes the Log out button off the bar. */
+.layout__email {
+  min-width: 0;
+  max-width: 16ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-muted);
+  font-size: 0.875rem;
+}
+
+/* Reset the browser's button chrome so it sits beside the nav links as text, while staying a
+   real <button> — logging out is an action, not a destination, so it must not be a link. */
+.layout__logout {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--text);
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: 500;
+  text-decoration: underline;
+  cursor: pointer;
+  white-space: nowrap; /* "Log out" broke across two lines at 400px, doubling the header height */
+}
+
+.layout__logout:hover {
+  color: var(--brand);
+}
+
 /* Phones: reclaim the side padding, which is a large share of a 375px-wide screen. */
 @media (max-width: 640px) {
   .layout__bar,
@@ -103,5 +151,10 @@
 
   .layout__nav {
     gap: var(--space-3);
+  }
+
+  /* The role badge and Log out button carry the meaning; the email is the first thing to go. */
+  .layout__email {
+    display: none;
   }
 }

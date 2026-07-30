@@ -1,11 +1,13 @@
 import { Link, NavLink, Outlet } from 'react-router-dom';
 import { useBasket } from '../hooks/useBasket.js';
+import { useAuth } from '../hooks/useAuth.js';
 import './Layout.css';
 
 // Shared chrome for every customer-facing page. Rendered by the layout route in App.jsx,
 // so pages themselves contain only their own content.
 export default function Layout() {
   const { itemCount } = useBasket();
+  const { user, isLoggedIn, logOut } = useAuth();
 
   // Returned by NavLink's className function on every navigation -> keeps the active-state
   // logic in one place instead of repeating the ternary on each link.
@@ -40,11 +42,23 @@ export default function Layout() {
                   )}
                 </NavLink>
               </li>
-              <li>
-                <NavLink to="/login" className={linkClass}>
-                  Log in
-                </NavLink>
-              </li>
+              {isLoggedIn ? (
+                <li className="layout__account">
+                  <span className="layout__role">{user.role}</span>
+                  <span className="layout__email">{user.email}</span>
+                  {/* No navigate() afterwards: ProtectedRoute already redirects a logged-out
+                      user off a guarded page, and on a public page there is nowhere to send them. */}
+                  <button type="button" className="layout__logout" onClick={logOut}>
+                    Log out
+                  </button>
+                </li>
+              ) : (
+                <li>
+                  <NavLink to="/login" className={linkClass}>
+                    Log in
+                  </NavLink>
+                </li>
+              )}
             </ul>
           </nav>
         </div>
