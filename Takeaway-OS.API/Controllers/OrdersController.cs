@@ -48,6 +48,26 @@ public class OrdersController : ControllerBase
         return Ok(await _orderService.GetAssignedAsync(applicationUserId.Value));
     }
 
+    // [AllowAnonymous] is safe HERE and not on GetById because of what's in the URL: an int id is
+    // guessable and sequential (order 19 implies order 18), while a v4 GUID is 122 random bits, so
+    // there is no set of ids to walk. The token is the credential, exactly like the Stripe webhook's
+    // signature standing in for a login.
+    //
+    // {token:guid} is a route constraint: a malformed token fails to match this route at all and
+    // falls through to a 404, so garbage never reaches the database as a query.
+    [HttpGet("by-token/{token:guid}")]
+    [AllowAnonymous]
+    public async Task<ActionResult<GuestOrderDto>> GetByToken(Guid token)
+    {
+        var order = await _orderService.GetByTokenAsync(token);
+
+        // Bare 404 with no message: a wrong token and a deleted order are indistinguishable to the
+        // caller, so nothing here confirms whether a given token was ever valid.
+        if (order is null) return NotFound();
+
+        return Ok(order);
+    }
+
     [HttpGet("{id}")]
     [Authorize(Roles = $"{Roles.Owner},{Roles.Customer}")] // interpolated const string - both roles satisfy it
     public async Task<ActionResult<OrderDto>> GetById(int id)
@@ -86,7 +106,10 @@ public class OrdersController : ControllerBase
         var response = new OrderCreateResponseDto
         {
             Order = result.Order,
-            ClientSecret = result.ClientSecret! // always set when Order is non-null
+            ClientSecret = result.ClientSecret!, // always set when Order is non-null
+            // The only time this is ever sent. A guest can't read their order back without it, and
+            // this response is the one moment we know we're talking to the person who placed it.
+            PublicToken = result.PublicToken
         };
         return CreatedAtAction(nameof(GetById), new { id = result.Order.Id }, response);
     }

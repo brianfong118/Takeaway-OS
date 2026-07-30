@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Elements } from '@stripe/react-stripe-js';
 import PaymentForm from '../components/PaymentForm.jsx';
 import { stripePromise } from '../utils/stripe.js';
@@ -25,6 +25,7 @@ const APPEARANCE = {
 export default function PaymentPage() {
   // Passing the FUNCTION, not calling it
   const [pending] = useState(loadPendingPayment);
+  const navigate = useNavigate();
 
   // { status, amount } once Stripe has been asked about this payment; null while that is in flight.
   const [intent, setIntent] = useState(null);
@@ -55,8 +56,26 @@ export default function PaymentPage() {
           return;
         }
 
-        // Already done -> drop the handoff now, so a later visit cannot re-offer a paid order.
-        if (paymentIntent.status === 'succeeded') clearPendingPayment();
+        // Already done -> a stale tab reopened after paying, or a return trip from a 3DS redirect
+        // that succeeded. Send it to the confirmation page, the same place a fresh payment lands.
+        if (paymentIntent.status === 'succeeded') {
+          clearPendingPayment(); // drop the handoff so a later visit cannot re-offer a paid order
+
+          // Handoffs written before the confirmation page existed carry no token. Falling through
+          // to the local success panel is better than navigating to /order/undefined.
+          if (pending.publicToken) {
+            // replace, not push: /pay must not sit in history behind the confirmation page, or Back
+            // lands on a page whose handoff has just been cleared ("no order waiting to be paid").
+            navigate(`/order/${pending.publicToken}`, { replace: true });
+            return;
+          }
+        }
+
+        // Also terminal: a cancelled PaymentIntent's client secret is spent, so this handoff can
+        // never lead to a payment again. Dropping it now means the panel below shows once and then
+        // /pay falls back to the honest empty state, instead of re-showing "Payment cancelled"
+        // every visit until some unrelated new order happens to overwrite the entry.
+        if (paymentIntent.status === 'canceled') clearPendingPayment();
 
         // Stripe holds money as a whole number of pence (850 = £8.50). Divided once, for display
         // only. This is the server-computed total, and the only place the browser can learn it
@@ -74,13 +93,23 @@ export default function PaymentPage() {
     return () => {
       ignore = true;
     };
-  }, [pending]); // `pending` is set once and never replaced, so this runs exactly once
+    // navigate is stable across renders (react-router memoises it), so listing it can't retrigger
+    // this effect - it is here to satisfy the exhaustive-deps rule honestly rather than silence it.
+  }, [pending, navigate]); // `pending` is set once and never replaced, so this runs exactly once
 
   // Called by PaymentForm after a clean confirmation. does NOT tell the API.
   // The order is flipped to Paid by Stripe's webhook calling the server directly.
   function handleSuccess(paymentIntent) {
     clearPendingPayment();
-    setIntent((current) => ({ ...current, status: paymentIntent.status })); 
+
+    // 'processing' also reaches here (an async payment method that hasn't settled). It is NOT a
+    // success, so it stays on this page and falls to the processing panel below.
+    if (paymentIntent.status === 'succeeded' && pending.publicToken) {
+      navigate(`/order/${pending.publicToken}`, { replace: true });
+      return;
+    }
+
+    setIntent((current) => ({ ...current, status: paymentIntent.status }));
   }
 
   // EARLY RETURNS (Every hook above runs unconditionally)
@@ -115,6 +144,8 @@ export default function PaymentPage() {
     );
   }
 
+  // Fallback only. A successful payment normally navigates to /order/:token above and never renders
+  // this; it survives for handoffs saved before that page existed, which carry no token.
   if (intent.status === 'succeeded') {
     return (
       <div className="checkout__empty">

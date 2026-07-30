@@ -8,6 +8,18 @@ export const ORDER_TYPES = {
   Delivery: 'Delivery',
 };
 
+// Mirrors the OrderStatus enum, same string-name-over-the-wire rule as ORDER_TYPES above.
+// Listed in the order an order actually moves through them
+export const ORDER_STATUSES = {
+  Pending: 'Pending',
+  Paid: 'Paid',
+  Preparing: 'Preparing',
+  Ready: 'Ready',
+  OutForDelivery: 'OutForDelivery',
+  Completed: 'Completed',
+  Cancelled: 'Cancelled',
+};
+
 // Basket line -> OrderItemCreateDto. Lives here, not in the page, because the shape it
 // produces is part of the API contract, and that is what this layer owns.
 //
@@ -41,6 +53,14 @@ export function createOrder({ customerName, customerPhone, deliveryAddress, addr
     addressId,
     orderType,
     notes,
-    items: lines.map(toOrderItemDto), 
+    items: lines.map(toOrderItemDto),
   });
+}
+
+// GET /api/orders/by-token/{token}
+// Returns: GuestOrderDto { id, orderType, status, deliveryAddress, notes, createdAt, items[], total }
+export function getOrderByToken(token) {
+  // A GUID has no characters that need escaping, but the encode stays: this value reaches us from a
+  // URL segment, and building a request path out of unescaped input is the habit worth not forming.
+  return api.get(`/api/orders/by-token/${encodeURIComponent(token)}`, { auth: false });
 }

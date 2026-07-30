@@ -77,8 +77,18 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<int>
             .HasForeignKey(o => o.DriverId)
             .OnDelete(DeleteBehavior.SetNull);
 
-        modelBuilder.Entity<Order>() 
-            .HasIndex(o => o.DriverId); 
+        modelBuilder.Entity<Order>()
+            .HasIndex(o => o.DriverId);
+
+        // Two jobs, which is why it's unique and not just an index.
+        // Index: the guest confirmation lookup filters on this column and nothing else, so without
+        //   it every guest page load is a full scan of the Orders table.
+        // Unique: makes the database refuse a second order carrying the same token, so the lookup
+        //   provably matches at most one order. Guid.NewGuid() collisions are already effectively
+        //   impossible -> this is the guarantee that a bug or a manual UPDATE can't create one either.
+        modelBuilder.Entity<Order>()
+            .HasIndex(o => o.PublicToken)
+            .IsUnique();
 
         // Readable straight from a psql query, and safe if the enum's numbers ever shift.
         modelBuilder.Entity<Order>()

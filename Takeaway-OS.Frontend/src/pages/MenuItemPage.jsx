@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { getMenuItem } from '../api/menu.js';
 import { useBasket } from '../hooks/useBasket.js';
-import { MAX_LINE_QUANTITY } from '../utils/basket.js';
+import { MAX_LINE_QUANTITY, lineTotal } from '../utils/basket.js';
 import { formatPrice, formatPriceDelta } from '../utils/format.js';
 import './MenuItemPage.css';
 
@@ -101,9 +101,6 @@ function MenuItemView({ id }) {
   const selectedOptions = item.modifierGroups.flatMap((group) =>
     group.options.filter((option) => (selections[group.id] ?? []).includes(option.id)),
   );
-  const unitPrice = item.price + selectedOptions.reduce((sum, o) => sum + o.priceDelta, 0);
-  const total = unitPrice * quantity;
-
   const unmetGroups = item.modifierGroups.filter(
     (group) => (selections[group.id] ?? []).length < effectiveMin(group),
   );
@@ -123,6 +120,8 @@ function MenuItemView({ id }) {
       priceDelta: o.priceDelta,
     })),
   };
+
+  const total = lineTotal(lineToAdd);
 
   return (
     <article className="item">

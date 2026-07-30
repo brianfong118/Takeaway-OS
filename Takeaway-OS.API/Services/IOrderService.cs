@@ -20,6 +20,11 @@ public class OrderCreateResult
     // The Stripe PaymentIntent's client secret, set alongside a successful Order.
     // Handed to the browser so it can complete the payment; it's payment-scoped, not our secret key.
     public string? ClientSecret { get; set; }
+
+    // The created order's PublicToken, so the browser can keep a link to a guest order it will
+    // otherwise never be able to read again. Carried separately from Order (an OrderDto) because
+    // OrderDto deliberately doesn't expose it - see OrderCreateResponseDto.
+    public Guid PublicToken { get; set; }
 }
 
 // MarkOrderPaidAsync's outcome. The webhook returns 200 for all of these (receiving the event always = "handled" 
@@ -62,6 +67,11 @@ public interface IOrderService
     // Returns null both when the order doesn't exist AND when it belongs to someone else
     // so controller's 404 can't be used to probe which order IDs exist.
     Task<OrderDto?> GetByIdForCustomerAsync(int id, int applicationUserId);
+
+    // The guest confirmation read. Takes the unguessable PublicToken instead of the sequential Id,
+    // which is the ONLY reason this can be exposed anonymously: there is nothing to enumerate.
+    // Returns the narrow GuestOrderDto, not OrderDto - a token holder is not a logged-in customer.
+    Task<GuestOrderDto?> GetByTokenAsync(Guid token);
 
     // applicationUserId is null for guest checkout, which stays the default path.
     // Separate parameter rather than a field on OrderCreateDto BECAUSE it comes from the validated JWT 

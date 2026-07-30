@@ -12,9 +12,10 @@ export function lineKey({ menuItemId, modifiers, notes }) {
   return `${menuItemId}|${ids}|${notes.trim()}`;
 }
 
-// Modifier deltas apply per unit, so they are added before multiplying by quantity.
-// Display only. OrderService.ComputeTotal produces the amount actually charged.
+// Mirrors OrderService.ComputeTotal exactly: sum(UnitPrice * Quantity) + sum(PriceDelta)
+// Also used by OrderConfirmationPage for order items, which carry the same
+// unitPrice/quantity/modifiers[].priceDelta shape. One function is what stops the two drifting.
 export function lineTotal(line) {
-  const perUnit = line.unitPrice + line.modifiers.reduce((sum, m) => sum + m.priceDelta, 0);
-  return perUnit * line.quantity;
+  const modifiers = line.modifiers.reduce((sum, m) => sum + m.priceDelta, 0);
+  return line.unitPrice * line.quantity + modifiers;
 }

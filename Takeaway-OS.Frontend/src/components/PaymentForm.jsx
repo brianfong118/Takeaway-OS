@@ -44,15 +44,24 @@ export default function PaymentForm({ amount, onSuccess }) {
     // Resolves rather than throws, so this is an if, not a catch. Exactly one of
     // confirmError / paymentIntent is populated.
     if (confirmError) {
-      // Only these 2 types are written for customers. Anything else is an integration fault
-      // whose wording would confuse them and can leak implementation detail.
-      const isCustomerFacing =
+      // These two types are the ones Stripe.js renders INSIDE the PaymentElement itself, and that
+      // display is not ours to turn off - it lives in a cross-origin iframe. 
+      const isShownInlineByStripe =
         confirmError.type === 'card_error' || confirmError.type === 'validation_error';
 
+      // A failed 3D Secure check arrives as invalid_request_error (NOT card_error), so Stripe does
+      // NOT show it inline , our banner is the only message the customer would get.
+      const isFailedAuthentication =
+        confirmError.code === 'payment_intent_authentication_failure';
+
+      // null clears the banner rather than leaving a previous one up. Every branch that reaches
+      // here has a message somewhere on screen: inline from Stripe, or in the banner below.
       setError(
-        isCustomerFacing
-          ? confirmError.message
-          : 'The payment could not be completed. Please try again.',
+        isShownInlineByStripe
+          ? null
+          : isFailedAuthentication
+            ? 'Your bank could not verify this card. Please try a different card.'
+            : 'The payment could not be completed. Please try again.',
       );
       setIsSubmitting(false); // stay on the form: a decline is retryable with another card
       return;

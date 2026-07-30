@@ -5,6 +5,7 @@ import MenuItemPage from './pages/MenuItemPage.jsx';
 import BasketPage from './pages/BasketPage.jsx';
 import CheckoutPage from './pages/CheckoutPage.jsx';
 import PaymentPage from './pages/PaymentPage.jsx';
+import OrderConfirmationPage from './pages/OrderConfirmationPage.jsx';
 import NotFoundPage from './pages/NotFoundPage.jsx';
 
 // The app's route table. Kept in one file so every URL the app answers to is visible at a glance.
@@ -25,6 +26,11 @@ export default function App() {
             normal, refreshable URL: the order id and client secret come from sessionStorage,
             not from navigation state, so reloading /pay keeps working. */}
         <Route path="pay" element={<PaymentPage />} />
+
+        {/* The guest's permanent link to one order. The token in the URL is what authorises the
+            read, so unlike /pay this page needs no sessionStorage at all - it works from a
+            bookmark, in a new tab, or days later. */}
+        <Route path="order/:token" element={<OrderConfirmationPage />} />
 
         {/* Inside the layout on purpose -> an unknown URL still gets the nav to escape with. */}
         <Route path="*" element={<NotFoundPage />} />

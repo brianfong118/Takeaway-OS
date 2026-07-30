@@ -85,6 +85,9 @@ export default function CheckoutPage() {
       savePendingPayment({
         orderId: response.order.id,
         clientSecret: response.clientSecret,
+        // Sent by the API only in this one response. A guest has no login, so this token is the
+        // sole route back to their own order -> losing it here loses it permanently.
+        publicToken: response.publicToken,
       });
       clearBasket();
       navigate('/pay');

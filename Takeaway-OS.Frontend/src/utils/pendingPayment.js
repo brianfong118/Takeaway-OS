@@ -2,8 +2,11 @@
 // PaymentIntent, which is why it is safe in the browser at all.
 const KEY = 'takeawayos.pendingPayment';
 
-export function savePendingPayment({ orderId, clientSecret }) {
-  sessionStorage.setItem(KEY, JSON.stringify({ orderId, clientSecret }));
+// publicToken rides along so /pay can hand it to the confirmation page once payment succeeds.
+// It is the guest's ONLY way back to this order, and it exists exactly once, in the create-order
+// response -> if it were dropped here it could not be recovered from anywhere.
+export function savePendingPayment({ orderId, clientSecret, publicToken }) {
+  sessionStorage.setItem(KEY, JSON.stringify({ orderId, clientSecret, publicToken }));
 }
 
 export function loadPendingPayment() {

@@ -88,6 +88,19 @@ public class OrderService : IOrderService
         return order is null ? null : MapToDto(order);
     }
 
+    // The guest confirmation lookup. No ownership filter, because a guest order has no owner to
+    // match against -> possession of the token IS the check, and the unique index on PublicToken is
+    // what makes "at most one order" a database guarantee rather than an assumption.
+    public async Task<GuestOrderDto?> GetByTokenAsync(Guid token)
+    {
+        var order = await _context.Orders
+            .Include(o => o.OrderItems)
+                .ThenInclude(oi => oi.OrderItemModifiers) // needed for both the receipt lines and ComputeTotal
+            .FirstOrDefaultAsync(o => o.PublicToken == token);
+
+        return order is null ? null : MapToGuestDto(order);
+    }
+
     public async Task<List<OrderDto>> GetAssignedAsync(int applicationUserId)
     {
         var driverId = await ResolveDriverIdAsync(applicationUserId);
@@ -253,7 +266,10 @@ public class OrderService : IOrderService
         return new OrderCreateResult
         {
             Order = MapToDto(order),
-            ClientSecret = paymentIntent.ClientSecret
+            ClientSecret = paymentIntent.ClientSecret,
+            // Read off the entity, which already carries it: the property initialiser on Order
+            // generated the value before this order was ever inserted. Nothing to look up.
+            PublicToken = order.PublicToken
         };
     }
 
@@ -349,23 +365,49 @@ public class OrderService : IOrderService
             CreatedAt = order.CreatedAt,
             CustomerId = order.CustomerId,
             DriverId = order.DriverId,
-            Items = order.OrderItems.Select(oi => new OrderItemDto
-            {
-                Id = oi.Id,
-                ItemName = oi.ItemName,
-                UnitPrice = oi.UnitPrice,
-                Quantity = oi.Quantity,
-                Notes = oi.Notes,
-                Modifiers = oi.OrderItemModifiers.Select(m => new OrderItemModifierDto
-                {
-                    Id = m.Id,
-                    Name = m.Name,
-                    PriceDelta = m.PriceDelta
-                }).ToList()
-            }).ToList(),
+            Items = MapItems(order),
             // Never stored — always derived fresh from the line items so it can't drift from them.
             Total = ComputeTotal(order)
         };
+    }
+
+    // The guest confirmation projection. Every field OrderDto carries that isn't here is omitted
+    // on purpose, not by oversight -> see GuestOrderDto for which, and why.
+    internal static GuestOrderDto MapToGuestDto(Order order)
+    {
+        return new GuestOrderDto
+        {
+            Id = order.Id,
+            OrderType = order.OrderType,
+            Status = order.Status,
+            DeliveryAddress = order.DeliveryAddress,
+            Notes = order.Notes,
+            CreatedAt = order.CreatedAt,
+            Items = MapItems(order),
+            // Same ComputeTotal as MapToDto, so the guest's receipt, the Owner's list and the amount
+            // charged in Stripe are all one calculation and can't drift apart.
+            Total = ComputeTotal(order)
+        };
+    }
+
+    // Shared by both projections above: the line items are identical in each, and the customer's own
+    // basket contents are not what either shape is being careful about.
+    private static List<OrderItemDto> MapItems(Order order)
+    {
+        return order.OrderItems.Select(oi => new OrderItemDto
+        {
+            Id = oi.Id,
+            ItemName = oi.ItemName,
+            UnitPrice = oi.UnitPrice,
+            Quantity = oi.Quantity,
+            Notes = oi.Notes,
+            Modifiers = oi.OrderItemModifiers.Select(m => new OrderItemModifierDto
+            {
+                Id = m.Id,
+                Name = m.Name,
+                PriceDelta = m.PriceDelta
+            }).ToList()
+        }).ToList();
     }
 
     // The authoritative order total: sum(UnitPrice * Quantity) + sum(modifier PriceDeltas).

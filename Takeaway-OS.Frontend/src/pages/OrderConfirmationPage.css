@@ -1,0 +1,118 @@
+/* Same measure as .checkout / .basket, so finishing an order doesn't change the page width. */
+.confirmation {
+  max-width: 640px;
+}
+
+.confirmation__title {
+  margin-bottom: var(--space-1);
+}
+
+.confirmation__order-number {
+  margin-bottom: var(--space-4);
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.confirmation__note {
+  margin-top: var(--space-3);
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+/* The progress list. position: relative establishes the containing block for each step's
+   connector line below. */
+.confirmation__steps {
+  position: relative;
+  margin-bottom: var(--space-5);
+}
+
+/* padding-left leaves room for the marker, which is positioned into that gap rather than being
+   part of the text flow -> a step label that wraps stays aligned instead of tucking under its dot. */
+.confirmation__step {
+  position: relative;
+  padding-left: var(--space-5);
+  padding-bottom: var(--space-3);
+  color: var(--text-muted);
+}
+
+.confirmation__step:last-child {
+  padding-bottom: 0;
+}
+
+/* The marker. A ring by default; the state modifiers below fill it in.
+   The reset in index.css already removed list bullets, so this is the only marker there is. */
+.confirmation__step::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.3em; /* em, so the dot tracks the text's own size rather than a fixed offset */
+  width: 0.75rem;
+  height: 0.75rem;
+  border: 2px solid var(--border);
+  border-radius: 50%;
+  background: var(--surface);
+  z-index: 1; /* sits above the connector line, so the line appears to stop at the dot */
+}
+
+/* The connector, drawn downward from each step except the last. Skipping the last one is what
+   stops a line dangling below the final dot. */
+.confirmation__step:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  left: 0.3125rem; /* half the marker's width, minus half this line's, to centre it under the dot */
+  top: 0.3em;
+  bottom: 0;
+  width: 2px;
+  background: var(--border);
+}
+
+.confirmation__step--done {
+  color: var(--text);
+}
+
+.confirmation__step--done::before {
+  border-color: var(--success);
+  background: var(--success);
+}
+
+/* Only completed steps colour their connector, so the line's colour shows how far along the
+   order actually is. */
+.confirmation__step--done::after {
+  background: var(--success);
+}
+
+.confirmation__step--current {
+  color: var(--text);
+  font-weight: 600;
+}
+
+/* Hollow but brand-coloured: reads as "here now", distinct from a filled = "done" dot.
+   The ring is thickened rather than filled so the difference survives greyscale printing. */
+.confirmation__step--current::before {
+  border-color: var(--brand);
+  border-width: 3px;
+  background: var(--surface);
+}
+
+.confirmation__panel {
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 2px solid var(--border);
+}
+
+.confirmation__panel h2 {
+  font-size: 1rem;
+  margin-bottom: var(--space-2);
+}
+
+/* Preserves the line breaks a customer typed into the address or notes textarea, without letting
+   a long unbroken string push the layout sideways. */
+.confirmation__detail {
+  margin-bottom: var(--space-3);
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+}
+
+.confirmation .checkout__cta {
+  margin-top: var(--space-4);
+}

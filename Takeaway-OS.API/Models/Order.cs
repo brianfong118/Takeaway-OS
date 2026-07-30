@@ -20,6 +20,19 @@ public class Order
     public int? DriverId { get; set; }
     public Driver? Driver { get; set; }
 
+    // The guest's capability to read back THIS one order, and nothing else.
+    // A guest has no login, so there is no identity to scope a read to -> holding the token IS the
+    // authorisation. 122 random bits (v4 GUID), so unlike the sequential Id it can't be guessed or
+    // walked, which is exactly why GET by id stays Owner/Customer-only and this gets its own route.
+    //
+    // Generated here rather than by a Postgres column default, so the value exists on the in-memory
+    // entity before SaveChangesAsync and CreateAsync can hand it straight back in the response.
+    // Same reasoning as CreatedAt below being set in C#, not by the database.
+    //
+    // Non-nullable (contrast StripePaymentIntentId): every order from now on has one, and the
+    // migration backfills the rows that predate the column rather than leaving them null.
+    public Guid PublicToken { get; set; } = Guid.NewGuid();
+
     public OrderType OrderType { get; set; }
     public OrderStatus Status { get; set; } = OrderStatus.Pending;
     public string Notes { get; set; } = string.Empty;

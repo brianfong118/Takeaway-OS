@@ -83,6 +83,39 @@ public class OrderCreateResponseDto
 {
     public OrderDto Order { get; set; } = null!;
     public string ClientSecret { get; set; } = string.Empty;
+
+    // The guest's read-back key for this order (Order.PublicToken).
+    // Returned HERE and nowhere else: this response goes only to whoever just placed the order.
+    // Deliberately NOT a field on OrderDto - that shape is served to the Owner's whole-restaurant
+    // list, and putting a per-order access key in it would hand out every customer's key at once.
+    public Guid PublicToken { get; set; }
+}
+
+// Shape returned by GET /api/orders/by-token/{token} - the guest order confirmation page.
+// A guest has no login, so the token is the authorisation, which makes this a deliberately
+// narrower projection than OrderDto: anyone holding the link sees exactly these fields.
+//
+// The rule applied: include what the confirmation page renders, exclude what is decoration.
+//   - CustomerPhone is absent. The page has no use for it and it is the most abusable field here.
+//   - CustomerName is absent for the same reason - "Thanks, <name>" is not worth adding a name to
+//     what a forwarded link discloses.
+//   - DeliveryAddress IS present, because checking the food is going to the right place is a real
+//     function of a confirmation page, not decoration.
+//   - CustomerId / DriverId are absent: internal ids, nothing the customer can act on.
+public class GuestOrderDto
+{
+    public int Id { get; set; }            // the human-facing order number, quoted on the phone
+    public OrderType OrderType { get; set; }
+    public OrderStatus Status { get; set; } // the reason this endpoint exists - live, not a snapshot
+    public string DeliveryAddress { get; set; } = string.Empty; // empty on collection orders
+    public string Notes { get; set; } = string.Empty;
+    public DateTime CreatedAt { get; set; }
+
+    // Reuses OrderItemDto: the customer's own basket, so it discloses nothing they didn't submit.
+    public List<OrderItemDto> Items { get; set; } = new();
+
+    // Same ComputeTotal as everywhere else, so the receipt can't disagree with what Stripe charged.
+    public decimal Total { get; set; }
 }
 
 // Separate, narrow DTO for the staff status-update endpoint
