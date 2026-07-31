@@ -64,3 +64,36 @@ export function getOrderByToken(token) {
   // URL segment, and building a request path out of unescaped input is the habit worth not forming.
   return api.get(`/api/orders/by-token/${encodeURIComponent(token)}`, { auth: false });
 }
+
+// --- Owner-only ---
+
+// GET /api/orders
+// Returns: OrderDto[] - every order ever placed, newest first. No server-side filter or paging,
+// so the dashboard trims client-side. First thing to revisit if the list gets slow.
+export function getAllOrders() {
+  return api.get('/api/orders');
+}
+
+// PUT /api/orders/{id}/status -> 204
+export function updateOrderStatus(id, status) {
+  return api.put(`/api/orders/${id}/status`, { status });
+}
+
+// PUT /api/orders/{id}/driver -> 204. driverId null unassigns, which keeps it idempotent.
+export function assignDriver(id, driverId) {
+  return api.put(`/api/orders/${id}/driver`, { driverId });
+}
+
+// --- Driver-only ---
+
+// GET /api/orders/assigned
+// Returns: OrderDto[] scoped to the caller. No driver id to pass - the server reads it off the JWT.
+export function getAssignedOrders() {
+  return api.get('/api/orders/assigned');
+}
+
+// PUT /api/orders/{id}/delivery-status -> 204
+// Separate from updateOrderStatus: the server allows only Ready -> OutForDelivery -> Completed here.
+export function updateDeliveryStatus(id, status) {
+  return api.put(`/api/orders/${id}/delivery-status`, { status });
+}

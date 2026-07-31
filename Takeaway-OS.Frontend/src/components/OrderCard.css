@@ -1,0 +1,191 @@
+.order-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+}
+
+.order-card__header {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.order-card__number {
+  font-weight: 700;
+  font-size: 1.125rem;
+}
+
+.order-card__type {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 2px var(--space-2);
+  border-radius: var(--radius);
+}
+
+.order-card__type--delivery {
+  color: var(--brand);
+  background: var(--brand-bg);
+}
+
+.order-card__type--collection {
+  color: var(--success);
+  background: var(--success-bg);
+}
+
+/* Pushed to the right edge by auto margin rather than by a spacer element. */
+.order-card__waiting {
+  margin-left: auto;
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+/* --- full variant: the item list --- */
+
+.order-card__items {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.order-card__item-line {
+  display: flex;
+  gap: var(--space-2);
+  font-weight: 600;
+}
+
+.order-card__qty {
+  color: var(--brand);
+  white-space: nowrap;
+}
+
+.order-card__modifier {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+  /* Indent aligns modifiers under the item name, past the "2x". */
+  padding-left: var(--space-4);
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+.order-card__item-notes,
+.order-card__notes {
+  padding: var(--space-2);
+  font-size: 0.875rem;
+  font-style: italic;
+  color: var(--warning);
+  background: var(--warning-bg);
+  border-radius: var(--radius);
+}
+
+/* Kitchen must not miss a free-text request, so it gets the warning tint above and not muted grey. */
+.order-card__item-notes {
+  margin-left: var(--space-4);
+}
+
+/* --- compact variant --- */
+
+.order-card__summary,
+.order-card__address,
+.order-card__driver-name {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+.order-card__driver {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.order-card__driver-label {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+}
+
+.order-card__driver-select {
+  flex: 1;
+  min-width: 0; /* lets the select shrink inside the flex row instead of forcing overflow */
+  padding: var(--space-1) var(--space-2);
+  font: inherit;
+  font-size: 0.875rem;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+/* --- footer --- */
+
+.order-card__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-top: auto; /* pins the footer to the bottom so buttons line up across a grid row */
+  padding-top: var(--space-2);
+}
+
+.order-card__total {
+  font-weight: 700;
+}
+
+.order-card__actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.order-card__status {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+.order-card__button {
+  padding: var(--space-2) var(--space-3);
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  /* "Confirm cancel" is longer than "Cancel"; wrapping would grow the card mid-interaction. */
+  white-space: nowrap;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  cursor: pointer;
+  /* 44px is the minimum comfortable tap target; this screen is used on a tablet. */
+  min-height: 44px;
+}
+
+.order-card__button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.order-card__button--primary {
+  color: var(--text-inverse);
+  background: var(--brand);
+}
+
+.order-card__button--primary:hover:not(:disabled) {
+  background: var(--brand-dark);
+}
+
+.order-card__button--danger {
+  color: var(--danger);
+  background: var(--surface);
+  border-color: var(--border);
+}
+
+.order-card__button--danger:hover:not(:disabled) {
+  background: var(--danger-bg);
+  border-color: var(--danger);
+}

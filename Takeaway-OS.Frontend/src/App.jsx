@@ -7,7 +7,10 @@ import CheckoutPage from './pages/CheckoutPage.jsx';
 import PaymentPage from './pages/PaymentPage.jsx';
 import OrderConfirmationPage from './pages/OrderConfirmationPage.jsx';
 import LoginPage from './pages/LoginPage.jsx';
+import OwnerDashboardPage from './pages/OwnerDashboardPage.jsx';
 import NotFoundPage from './pages/NotFoundPage.jsx';
+import ProtectedRoute from './components/ProtectedRoute.jsx';
+import { ROLES } from './api/auth.js';
 
 // The app's route table. Kept in one file so every URL the app answers to is visible at a glance.
 export default function App() {
@@ -36,6 +39,13 @@ export default function App() {
         {/* Owner and Driver sign in here; customers never have to. ProtectedRoute sends anyone
             who hits a guarded URL logged-out to this path, with where they came from attached. */}
         <Route path="login" element={<LoginPage />} />
+
+        {/* Another pathless layout route, this one contributing a guard instead of chrome.
+            Children render through ProtectedRoute's <Outlet />, so one wrapper covers all of
+            them. UI-only: every endpoint these pages call is [Authorize]d server-side too. */}
+        <Route element={<ProtectedRoute roles={[ROLES.Owner]} />}>
+          <Route path="owner" element={<OwnerDashboardPage />} />
+        </Route>
 
         {/* Inside the layout on purpose -> an unknown URL still gets the nav to escape with. */}
         <Route path="*" element={<NotFoundPage />} />

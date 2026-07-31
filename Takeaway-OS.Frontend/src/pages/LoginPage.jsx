@@ -1,12 +1,20 @@
 import { useState } from 'react';
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth.js';
+import { ROLES } from '../api/auth.js';
 import './LoginPage.css';
 
 const EMPTY_FORM = { email: '', password: '' };
 
+// Where a role has nothing better to do. A Customer has no dashboard, so the menu is the landing.
+function landingFor(role) {
+  if (role === ROLES.Owner) return '/owner';
+  if (role === ROLES.Driver) return '/driver';
+  return '/';
+}
+
 export default function LoginPage() {
-  const { isLoggedIn, logIn } = useAuth();
+  const { isLoggedIn, user, logIn } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -16,7 +24,8 @@ export default function LoginPage() {
 
   // Set by ProtectedRoute when it bounced them here. Absent on a direct visit, and gone after a
   // refresh, since it lives on the history entry rather than in the URL.
-  const from = location.state?.from?.pathname ?? '/';
+  // null rather than '/' so a direct visit can fall through to the role's landing page instead.
+  const from = location.state?.from?.pathname ?? null;
 
   function handleChange(event) {
     const { name, value } = event.target;
@@ -31,8 +40,10 @@ export default function LoginPage() {
     setError(null);
 
     try {
-      await logIn(form.email.trim(), form.password);
-      navigate(from, { replace: true }); // replace, so Back doesn't return to the login form
+      // logIn RETURNS the user: `user` from the hook still holds the old value for the rest of
+      // this render, so the redirect has to read the return value, not state.
+      const signedIn = await logIn(form.email.trim(), form.password);
+      navigate(from ?? landingFor(signedIn.role), { replace: true }); // replace, so Back doesn't return to the login form
     } catch (err) {
       setError(err);
       setIsSubmitting(false); // not finally: the success path unmounts this component
@@ -40,8 +51,9 @@ export default function LoginPage() {
   }
 
   // Below the hooks: an early return above them would change the hook call order between renders.
+  // Reached by visiting /login while already signed in, where `user` IS current.
   if (isLoggedIn) {
-    return <Navigate to={from} replace />;
+    return <Navigate to={from ?? landingFor(user.role)} replace />;
   }
 
   // The API sends no body with its 401, so client.js can only produce "Request failed with

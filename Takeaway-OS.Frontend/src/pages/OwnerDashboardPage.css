@@ -1,0 +1,131 @@
+.owner__title {
+  margin-bottom: var(--space-3);
+}
+
+.owner__message {
+  padding: var(--space-5) 0;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.owner__error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  color: var(--danger);
+  background: var(--danger-bg);
+  border: 1px solid var(--danger);
+  border-radius: var(--radius);
+}
+
+.owner__retry {
+  font: inherit;
+  font-weight: 600;
+  color: var(--danger);
+  background: none;
+  border: none;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* --- tabs --- */
+
+.owner__tabs {
+  display: flex;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+  /* Scroll rather than wrap: a second row of tabs would cost card height on a short screen. */
+  overflow-x: auto;
+  padding-bottom: var(--space-1);
+}
+
+.owner__tab {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  min-height: 44px;
+  font: inherit;
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--text-muted);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+
+.owner__tab--active {
+  color: var(--text-inverse);
+  background: var(--brand);
+  border-color: var(--brand);
+}
+
+.owner__count {
+  padding: 0 var(--space-2);
+  font-size: 0.8125rem;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.owner__tab--active .owner__count {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* Stays until the tab is opened, so a glance up minutes later still shows it. */
+.owner__tab--alert {
+  color: var(--warning);
+  background: var(--warning-bg);
+  border-color: var(--warning);
+  animation: owner-pulse 1.6s ease-in-out infinite;
+}
+
+.owner__new {
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+@keyframes owner-pulse {
+  50% {
+    box-shadow: 0 0 0 4px var(--warning-bg);
+  }
+}
+
+/* Vestibular safety: honour a system "reduce motion" setting, keeping the colour cue only. */
+@media (prefers-reduced-motion: reduce) {
+  .owner__tab--alert {
+    animation: none;
+  }
+}
+
+/* --- board --- */
+
+.owner__board {
+  display: grid;
+  gap: var(--space-3);
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+/* auto-fill + minmax: the browser fits as many columns as the width allows, so this is one rule
+   instead of a breakpoint per screen size. ~300px gives 3 across on a 1024px iPad. */
+/* No align-items: start. A grid row is as tall as its tallest card regardless, so stretching
+   costs no vertical space and lines every "Mark ready" up at the same height. */
+.owner__board--full {
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+}
+
+.owner__board--compact {
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+}
+
+@media (max-width: 640px) {
+  .owner__board {
+    grid-template-columns: 1fr;
+  }
+}

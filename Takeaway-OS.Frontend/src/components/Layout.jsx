@@ -1,6 +1,7 @@
 import { Link, NavLink, Outlet } from 'react-router-dom';
 import { useBasket } from '../hooks/useBasket.js';
 import { useAuth } from '../hooks/useAuth.js';
+import { ROLES } from '../api/auth.js';
 import './Layout.css';
 
 // Shared chrome for every customer-facing page. Rendered by the layout route in App.jsx,
@@ -42,6 +43,14 @@ export default function Layout() {
                   )}
                 </NavLink>
               </li>
+              {/* Decides which link to DRAW, never what data comes back - the API is the guard. */}
+              {user?.role === ROLES.Owner && (
+                <li>
+                  <NavLink to="/owner" className={linkClass}>
+                    Orders
+                  </NavLink>
+                </li>
+              )}
               {isLoggedIn ? (
                 <li className="layout__account">
                   <span className="layout__role">{user.role}</span>
