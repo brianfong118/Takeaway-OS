@@ -7,9 +7,11 @@ public interface IMenuItemService
     // Separate methods, not a bool flag, so a caller can never accidentally leak disabled items by
     // forgetting to pass the flag, endpoint's choice of method is the access decision.
 
-    // Admin reads (Owner): every item, available or not (items can be edited/re-enabled)  
+    // Admin reads (Owner): every item, available or not (items can be edited/re-enabled)
     Task<List<MenuItemDto>> GetAllAsync();
-    Task<MenuItemDto?> GetByIdAsync(int id);
+    // Single-item admin read: the item PLUS its modifier groups, unfiltered on both counts —
+    // a disabled item still resolves, and inactive options are included so they can be re-enabled.
+    Task<MenuItemAdminDetailDto?> GetAdminDetailByIdAsync(int id);
 
     // Public reads (anonymous): available items only -> the soft-delete filter (IsAvailable = true).
     Task<List<MenuItemDto>> GetAvailableAsync();

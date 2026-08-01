@@ -37,11 +37,44 @@ public class MenuItemService : IMenuItemService
             .ToListAsync();
     }
 
-    public async Task<MenuItemDto?> GetByIdAsync(int id)
+    // The owner's edit screen needs the links as well as the item, so this is the detail projection
+    // below with both filters removed: no m.IsAvailable, and no o.IsActive on the options.
+    // Deliberately a separate query rather than a flag on the public one — the filters ARE the access
+    // rule, and a bool parameter is one wrong argument away from leaking a disabled item anonymously.
+    public async Task<MenuItemAdminDetailDto?> GetAdminDetailByIdAsync(int id)
     {
         return await _context.MenuItems
             .Where(m => m.Id == id)
-            .Select(ToDto)
+            .Select(m => new MenuItemAdminDetailDto
+            {
+                Id = m.Id,
+                CategoryId = m.CategoryId,
+                CategoryName = m.Category.Name,
+                Name = m.Name,
+                Description = m.Description,
+                Price = m.Price,
+                IsAvailable = m.IsAvailable,
+                ModifierGroups = m.MenuItemModifierGroups
+                    .Select(link => new ModifierGroupDto
+                    {
+                        Id = link.ModifierGroup.Id,
+                        Name = link.ModifierGroup.Name,
+                        MinSelect = link.ModifierGroup.MinSelect,
+                        MaxSelect = link.ModifierGroup.MaxSelect,
+                        IsRequired = link.ModifierGroup.IsRequired,
+                        Options = link.ModifierGroup.ModifierOptions
+                            .Select(o => new ModifierOptionDto
+                            {
+                                Id = o.Id,
+                                ModifierGroupId = o.ModifierGroupId,
+                                Name = o.Name,
+                                PriceDelta = o.PriceDelta,
+                                IsActive = o.IsActive // carried through so the UI can mark it disabled
+                            })
+                            .ToList()
+                    })
+                    .ToList()
+            })
             .FirstOrDefaultAsync();
     }
 

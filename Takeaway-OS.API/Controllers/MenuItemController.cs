@@ -47,12 +47,14 @@ public class MenuItemsController : ControllerBase
         return Ok(menuItem);
     }
 
-    // Owner's admin single item 
+    // Owner's admin single item : the item plus its linked modifier groups, unfiltered.
+    // Resolves for a disabled item (unlike GET "{id}", which 404s) and includes inactive options,
+    // because this is the screen those things are switched back on from.
     [HttpGet("admin/{id}")]
     [Authorize(Roles = Roles.Owner)]
-    public async Task<ActionResult<MenuItemDto>> GetByIdAdmin(int id)
+    public async Task<ActionResult<MenuItemAdminDetailDto>> GetByIdAdmin(int id)
     {
-        var menuItem = await _menuItemService.GetByIdAsync(id);
+        var menuItem = await _menuItemService.GetAdminDetailByIdAsync(id);
         if (menuItem is null) return NotFound();
         return Ok(menuItem);
     }
