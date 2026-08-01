@@ -1,0 +1,44 @@
+/* Deliberately compact. This strip sits above the order board, which was measured to fit exactly
+   six Preparing cards on a 1024x768 iPad with ~14px to spare - so every pixel here comes off that
+   margin. Small text, tight padding, and a thin rule instead of a boxed segmented control. */
+.owner-nav {
+  display: flex;
+  gap: var(--space-4);
+}
+
+/* Its own row, above a page's content. Used everywhere except the order board. */
+.owner-nav--block {
+  margin-bottom: var(--space-3);
+  border-bottom: 1px solid var(--border);
+}
+
+/* Rides a row the page already draws, so it contributes NO height of its own. flex-shrink: 0
+   keeps it at full width while the status tabs beside it take the squeeze and scroll. */
+.owner-nav--inline {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.owner-nav__link {
+  padding: var(--space-2) 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-decoration: none;
+  /* Transparent underline reserved up front, so activating a link does not shift the row by 2px. */
+  border-bottom: 2px solid transparent;
+}
+
+/* Only the block variant has a container rule to sit the underline on. */
+.owner-nav--block .owner-nav__link {
+  margin-bottom: -1px;
+}
+
+.owner-nav__link:hover {
+  color: var(--text);
+}
+
+.owner-nav__link--active {
+  color: var(--brand);
+  border-bottom-color: var(--brand);
+}

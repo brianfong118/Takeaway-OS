@@ -45,10 +45,22 @@
 
 /* --- tabs --- */
 
+/* Status tabs + the owner section links on one line. The margin that used to sit on .owner__tabs
+   lives here now, so the shared row costs exactly what the tab row alone used to. */
+.owner__navrow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3); /* not space-4: every px here is a px the board doesn't get */
+}
+
 .owner__tabs {
   display: flex;
   gap: var(--space-2);
-  margin-bottom: var(--space-3); /* not space-4: every px here is a px the board doesn't get */
+  /* Takes the squeeze so the section links never shrink: on a phone the tabs scroll sideways
+     while Orders/Menu stay put and reachable. */
+  flex: 1;
+  min-width: 0;
   /* Scroll rather than wrap: a second row of tabs would cost card height on a short screen. */
   overflow-x: auto;
   padding-bottom: var(--space-1);

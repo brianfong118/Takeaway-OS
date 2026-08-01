@@ -1,0 +1,306 @@
+/* Unlike the order board's h1, this one stays visible: the menu page has no tab bar naming
+   itself, and it is not fighting for vertical space on a kitchen tablet. */
+.menu-admin__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.menu-admin__title {
+  font-size: 1.5rem;
+}
+
+.menu-admin__actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+/* Categories is structural and rarely touched; New item is the daily action. Outline vs filled
+   is what says which one the eye should land on first. */
+.menu-admin__secondary {
+  padding: var(--space-2) var(--space-4);
+  font: inherit;
+  color: var(--text);
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+
+.menu-admin__secondary:hover {
+  border-color: var(--text-muted);
+}
+
+.menu-admin__new {
+  padding: var(--space-2) var(--space-4);
+  font: inherit;
+  font-weight: 600;
+  color: var(--text-inverse);
+  background: var(--brand);
+  border: 1px solid var(--brand);
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+
+.menu-admin__new:hover:not(:disabled) {
+  background: var(--brand-dark);
+  border-color: var(--brand-dark);
+}
+
+.menu-admin__new:disabled {
+  color: var(--text-muted);
+  background: var(--border);
+  border-color: var(--border);
+  cursor: not-allowed;
+}
+
+.menu-admin__message {
+  padding: var(--space-5) 0;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.menu-admin__error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  color: var(--danger);
+  background: var(--danger-bg);
+  border: 1px solid var(--danger);
+  border-radius: var(--radius);
+}
+
+.menu-admin__retry {
+  font: inherit;
+  font-weight: 600;
+  color: var(--danger);
+  background: none;
+  border: none;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* --- category sections --- */
+
+.menu-admin__section {
+  margin-bottom: var(--space-5);
+}
+
+.menu-admin__section-head {
+  display: flex;
+  align-items: baseline; /* baseline, not center, so the count sits on the heading's text line */
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--border);
+}
+
+.menu-admin__category {
+  font-size: 1.125rem;
+}
+
+.menu-admin__section-count {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+}
+
+.menu-admin__empty {
+  padding: var(--space-3) 0;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+.menu-admin__list {
+  list-style: none;
+}
+
+/* --- one item row --- */
+
+/* Columns: name/description take the slack, the other three are sized to their content, so
+   prices and switches line up down the page regardless of how long the names are. */
+.item-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto auto auto;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--border);
+}
+
+/* A hidden item is dimmed rather than removed, and the switch is deliberately exempt: fading the
+   one control that turns it back on is how a row becomes hard to recover. */
+.item-row--off .item-row__main,
+.item-row--off .item-row__price {
+  opacity: 0.55;
+}
+
+.item-row__main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0; /* without this a long description refuses to shrink and pushes the row wide */
+}
+
+.item-row__name {
+  font-weight: 600;
+}
+
+.item-row__desc {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  /* One line only. The full text is on the edit form; this list is for scanning. */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.item-row__price {
+  font-variant-numeric: tabular-nums; /* equal-width digits, so the column does not jitter */
+  font-weight: 600;
+}
+
+/* --- availability switch --- */
+
+.item-row__switch {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) 0;
+  font: inherit;
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.item-row__switch:disabled {
+  cursor: progress;
+  opacity: 0.6;
+}
+
+.item-row__switch-track {
+  position: relative;
+  flex-shrink: 0;
+  width: 36px;
+  height: 20px;
+  background: var(--border);
+  border-radius: 999px;
+  transition: background 0.15s ease;
+}
+
+/* The knob. A pseudo-element so the track stays one element in the markup. */
+.item-row__switch-track::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  background: var(--surface);
+  border-radius: 50%;
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.15s ease;
+}
+
+/* Driven by aria-checked, not a separate class: the attribute a screen reader reads and the
+   thing the eye sees are then the same state, and cannot disagree. */
+.item-row__switch[aria-checked='true'] .item-row__switch-track {
+  background: var(--success);
+}
+
+.item-row__switch[aria-checked='true'] .item-row__switch-track::after {
+  transform: translateX(16px);
+}
+
+.item-row__switch[aria-checked='true'] .item-row__switch-label {
+  color: var(--success);
+  font-weight: 600;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .item-row__switch-track,
+  .item-row__switch-track::after {
+    transition: none;
+  }
+}
+
+/* --- edit / delete --- */
+
+/* Edit and Delete share a shape so the row reads as one control group; only the hover colour
+   and the confirm state tell them apart. */
+.item-row__edit {
+  padding: var(--space-1) var(--space-2);
+  font: inherit;
+  font-size: 0.8125rem;
+  color: var(--text);
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+
+.item-row__edit:hover:not(:disabled) {
+  border-color: var(--text-muted);
+}
+
+.item-row__edit:disabled {
+  cursor: progress;
+  opacity: 0.6;
+}
+
+/* Secondary by default: the availability switch is the reversible action and should read as the
+   obvious one. Only the confirm step is coloured. */
+.item-row__delete {
+  padding: var(--space-1) var(--space-2);
+  font: inherit;
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+
+.item-row__delete:hover:not(:disabled) {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+/* The :hover half is required, not redundant. The pointer is still over the button after the
+   first tap, and `.item-row__delete:hover:not(:disabled)` above scores (0,3,0) against this
+   class's (0,1,0) - so without a matching-specificity selector here, hover keeps the danger
+   text colour and paints red on the red confirm background, making "Confirm" invisible. */
+.item-row__delete--confirming,
+.item-row__delete--confirming:hover:not(:disabled) {
+  color: var(--text-inverse);
+  background: var(--danger);
+  border-color: var(--danger);
+  font-weight: 600;
+}
+
+.item-row__delete:disabled {
+  cursor: progress;
+  opacity: 0.6;
+}
+
+/* Phone: the grid collapses to name over a controls row, so nothing is squeezed to unreadable. */
+@media (max-width: 560px) {
+  .item-row {
+    grid-template-columns: 1fr auto;
+    row-gap: var(--space-2);
+  }
+
+  .item-row__main {
+    grid-column: 1 / -1;
+  }
+
+  .item-row__price {
+    justify-self: start;
+  }
+}

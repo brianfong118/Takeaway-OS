@@ -3,6 +3,7 @@ import { getAllOrders, updateOrderStatus, assignDriver, ORDER_STATUSES } from '.
 import { getDrivers } from '../api/drivers.js';
 import { OWNER_TABS, ownerActions, isDashboardVisible } from '../utils/orders.js';
 import OrderCard from '../components/OrderCard.jsx';
+import OwnerNav from '../components/OwnerNav.jsx';
 import './OwnerDashboardPage.css';
 
 const POLL_MS = 10000;
@@ -176,7 +177,11 @@ export default function OwnerDashboardPage() {
         </p>
       )}
 
-      <nav className="owner__tabs" aria-label="Order status">
+      {/* Status tabs and the owner's section links share one row. Given as its own strip the
+          section nav costs 55px, and the board fits six Preparing cards on an iPad with ~14px
+          to spare, so that strip would cost three cards. Here it costs nothing. */}
+      <div className="owner__navrow">
+        <nav className="owner__tabs" aria-label="Order status">
         {OWNER_TABS.map((t) => {
           const count = orders.filter((o) => t.statuses.includes(o.status)).length;
           const alerting = t.key === 'paid' && hasNewPaid;
@@ -202,7 +207,10 @@ export default function OwnerDashboardPage() {
             </button>
           );
         })}
-      </nav>
+        </nav>
+
+        <OwnerNav variant="inline" />
+      </div>
 
       {visibleOrders.length === 0 ? (
         <p className="owner__message">Nothing here.</p>

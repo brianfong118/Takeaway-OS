@@ -8,6 +8,7 @@ import PaymentPage from './pages/PaymentPage.jsx';
 import OrderConfirmationPage from './pages/OrderConfirmationPage.jsx';
 import LoginPage from './pages/LoginPage.jsx';
 import OwnerDashboardPage from './pages/OwnerDashboardPage.jsx';
+import OwnerMenuPage from './pages/OwnerMenuPage.jsx';
 import DriverDashboardPage from './pages/DriverDashboardPage.jsx';
 import NotFoundPage from './pages/NotFoundPage.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
@@ -44,8 +45,12 @@ export default function App() {
         {/* Another pathless layout route, this one contributing a guard instead of chrome.
             Children render through ProtectedRoute's <Outlet />, so one wrapper covers all of
             them. UI-only: every endpoint these pages call is [Authorize]d server-side too. */}
+        {/* Each owner page renders <OwnerNav /> itself rather than inheriting it from a layout
+            route. The board needs it INSIDE its status-tab row (a strip of its own would cost
+            55px, three Preparing cards on an iPad), and a layout route can only put it above. */}
         <Route element={<ProtectedRoute roles={[ROLES.Owner]} />}>
           <Route path="owner" element={<OwnerDashboardPage />} />
+          <Route path="owner/menu" element={<OwnerMenuPage />} />
         </Route>
 
         <Route element={<ProtectedRoute roles={[ROLES.Driver]} />}>

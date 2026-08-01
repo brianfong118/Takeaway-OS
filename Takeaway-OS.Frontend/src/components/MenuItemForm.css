@@ -1,0 +1,124 @@
+/* Capped rather than full width: the fields are short, and a name box stretched across an iPad
+   is harder to scan than one that ends where its content does. */
+.item-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  max-width: 520px;
+  padding: var(--space-4);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.item-form__title {
+  font-size: 1.125rem;
+}
+
+.item-form__error {
+  padding: var(--space-2) var(--space-3);
+  color: var(--danger);
+  background: var(--danger-bg);
+  border: 1px solid var(--danger);
+  border-radius: var(--radius);
+  font-size: 0.9375rem;
+}
+
+.item-form__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0; /* lets the two-up row actually halve, rather than each half holding its width */
+}
+
+.item-form__label {
+  font-weight: 600;
+  font-size: 0.9375rem;
+}
+
+.item-form__input {
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  /* Form controls do not inherit the page font, and a select needs this as much as an input. */
+  font-family: inherit;
+  font-size: 1rem;
+}
+
+.item-form__input--area {
+  resize: vertical;
+}
+
+.item-form__input:focus {
+  outline: 2px solid var(--brand);
+  outline-offset: 1px;
+  border-color: var(--brand);
+}
+
+/* Price and category share a line: both are short, and pairing them keeps the form under one
+   screen on a phone without scrolling to reach Save. */
+.item-form__row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+}
+
+.item-form__check {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 0.9375rem;
+  cursor: pointer;
+}
+
+.item-form__actions {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.item-form__save {
+  padding: var(--space-3) var(--space-5);
+  font: inherit;
+  font-weight: 600;
+  color: var(--text-inverse);
+  background: var(--brand);
+  border: 1px solid var(--brand);
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+
+.item-form__save:hover:not(:disabled) {
+  background: var(--brand-dark);
+  border-color: var(--brand-dark);
+}
+
+.item-form__cancel {
+  padding: var(--space-3) var(--space-4);
+  font: inherit;
+  color: var(--text-muted);
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+
+.item-form__cancel:hover:not(:disabled) {
+  color: var(--text);
+  border-color: var(--text-muted);
+}
+
+.item-form__save:disabled,
+.item-form__cancel:disabled {
+  cursor: progress;
+  opacity: 0.6;
+}
+
+@media (max-width: 480px) {
+  .item-form__row {
+    grid-template-columns: 1fr; /* stacked: two number/select boxes side by side get too narrow */
+  }
+}

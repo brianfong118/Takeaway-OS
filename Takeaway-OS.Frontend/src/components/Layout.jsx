@@ -54,10 +54,15 @@ export default function Layout() {
                 </>
               )}
               {/* Decides which link to DRAW, never what data comes back - the API is the guard. */}
+              {/* ONE link, not one per owner screen. Measured: Orders + Menu took this bar to
+                  392px against a 375px phone, and a third would have reached ~477px. The section
+                  switcher moved into the page (OwnerNav), so this stays fixed-width however many
+                  owner screens exist. No `end` here on purpose - unlike the tabs inside the page,
+                  this link SHOULD stay lit across every /owner/* URL. */}
               {user?.role === ROLES.Owner && (
                 <li>
                   <NavLink to="/owner" className={linkClass}>
-                    Orders
+                    Admin
                   </NavLink>
                 </li>
               )}
