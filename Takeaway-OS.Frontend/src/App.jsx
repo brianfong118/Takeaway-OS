@@ -8,6 +8,7 @@ import PaymentPage from './pages/PaymentPage.jsx';
 import OrderConfirmationPage from './pages/OrderConfirmationPage.jsx';
 import LoginPage from './pages/LoginPage.jsx';
 import OwnerDashboardPage from './pages/OwnerDashboardPage.jsx';
+import DriverDashboardPage from './pages/DriverDashboardPage.jsx';
 import NotFoundPage from './pages/NotFoundPage.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
 import { ROLES } from './api/auth.js';
@@ -45,6 +46,10 @@ export default function App() {
             them. UI-only: every endpoint these pages call is [Authorize]d server-side too. */}
         <Route element={<ProtectedRoute roles={[ROLES.Owner]} />}>
           <Route path="owner" element={<OwnerDashboardPage />} />
+        </Route>
+
+        <Route element={<ProtectedRoute roles={[ROLES.Driver]} />}>
+          <Route path="driver" element={<DriverDashboardPage />} />
         </Route>
 
         {/* Inside the layout on purpose -> an unknown URL still gets the nav to escape with. */}

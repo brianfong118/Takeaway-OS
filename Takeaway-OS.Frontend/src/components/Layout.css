@@ -150,11 +150,23 @@
   }
 
   .layout__nav {
-    gap: var(--space-3);
+    gap: var(--space-2);
   }
 
   /* The role badge and Log out button carry the meaning; the email is the first thing to go. */
   .layout__email {
     display: none;
+  }
+
+  /* Measured, not guessed: with the email already hidden, a signed-in Driver's bar still needed
+     386px, so it overflowed a 375px iPhone and a 360px Android. Tightening the brand and the two
+     gaps brings the minimum under 340px. The role badge deliberately stays - with the email gone
+     it is the only thing telling you which account you are in on a shared phone. */
+  .layout__bar {
+    gap: var(--space-2);
+  }
+
+  .layout__brand {
+    font-size: 1.0625rem;
   }
 }

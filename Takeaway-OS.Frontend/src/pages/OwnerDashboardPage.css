@@ -1,5 +1,17 @@
+/* Visually hidden, not deleted. The tab bar directly below already says Paid/Preparing/Ready,
+   so the word "Orders" earns nothing on screen, and its ~50px is the difference between six
+   Preparing cards fitting an iPad and the sixth falling below the fold. The h1 still exists for
+   screen readers and document outline: clipped to a 1px box rather than display:none, which
+   would remove it from the accessibility tree entirely. */
 .owner__title {
-  margin-bottom: var(--space-3);
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 .owner__message {
@@ -36,7 +48,7 @@
 .owner__tabs {
   display: flex;
   gap: var(--space-2);
-  margin-bottom: var(--space-4);
+  margin-bottom: var(--space-3); /* not space-4: every px here is a px the board doesn't get */
   /* Scroll rather than wrap: a second row of tabs would cost card height on a short screen. */
   overflow-x: auto;
   padding-bottom: var(--space-1);

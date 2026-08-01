@@ -12,12 +12,16 @@ export default function OrderCard({
   drivers = null, // non-null = render the assignment dropdown
   onAssignDriver,
   busy = false,
+  muted = false, // nothing for this user to do yet, so the card recedes
 }) {
   const isDelivery = order.orderType === ORDER_TYPES.Delivery;
   const itemCount = order.items.reduce((sum, item) => sum + item.quantity, 0);
 
+  // 'driver' shows the items like 'full' does, so the bag can be checked against the order.
+  const showItems = variant === 'full' || variant === 'driver';
+
   return (
-    <li className={`order-card order-card--${variant}`}>
+    <li className={`order-card order-card--${variant}${muted ? ' order-card--muted' : ''}`}>
       <header className="order-card__header">
         <span className="order-card__number">#{order.id}</span>
         <span className={`order-card__type order-card__type--${isDelivery ? 'delivery' : 'collection'}`}>
@@ -26,7 +30,21 @@ export default function OrderCard({
         <span className="order-card__waiting">{formatWaiting(order.createdAt)}</span>
       </header>
 
-      {variant === 'full' ? (
+      {/* The driver's whole job is on this block, so it sits above the items, not below. */}
+      {variant === 'driver' && (
+        <div className="order-card__contact">
+          {isDelivery && <p className="order-card__destination">{order.deliveryAddress}</p>}
+          <p className="order-card__customer">
+            {order.customerName}
+            {/* tel: dials straight from a phone, which is the only device this variant targets. */}
+            <a className="order-card__phone" href={`tel:${order.customerPhone}`}>
+              {order.customerPhone}
+            </a>
+          </p>
+        </div>
+      )}
+
+      {showItems ? (
         <ul className="order-card__items">
           {order.items.map((item) => (
             <li key={item.id} className="order-card__item">
@@ -81,7 +99,8 @@ export default function OrderCard({
         </label>
       )}
 
-      {isDelivery && !drivers && driverName && (
+      {/* Owner's view only: a driver already knows the order is theirs. */}
+      {variant === 'compact' && isDelivery && !drivers && driverName && (
         <p className="order-card__driver-name">Driver: {driverName}</p>
       )}
 

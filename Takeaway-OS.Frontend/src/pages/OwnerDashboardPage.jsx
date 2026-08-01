@@ -222,8 +222,11 @@ export default function OwnerDashboardPage() {
                 actions={actions}
                 onAction={(status) => handleAction(order, status)}
                 driverName={drivers.find((d) => d.id === order.driverId)?.name ?? null}
-                // Assignment belongs at handoff, so the dropdown appears on Ready only.
-                drivers={tab.key === 'ready' ? drivers : null}
+                // Preparing as well as Ready: assigning while the food cooks is what gives the
+                // driver advance warning, and it's the only way an order is ever assigned but
+                // not yet ready - the state the driver dashboard dims. Ready keeps it for late
+                // changes.
+                drivers={tab.key === 'ready' || tab.key === 'preparing' ? drivers : null}
                 onAssignDriver={(driverId) => handleAssignDriver(order, driverId)}
                 busy={busyIds.has(order.id)}
               />

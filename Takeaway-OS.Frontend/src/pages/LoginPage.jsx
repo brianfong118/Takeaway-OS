@@ -1,17 +1,10 @@
 import { useState } from 'react';
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth.js';
-import { ROLES } from '../api/auth.js';
+import { landingFor } from '../utils/routes.js';
 import './LoginPage.css';
 
 const EMPTY_FORM = { email: '', password: '' };
-
-// Where a role has nothing better to do. A Customer has no dashboard, so the menu is the landing.
-function landingFor(role) {
-  if (role === ROLES.Owner) return '/owner';
-  if (role === ROLES.Driver) return '/driver';
-  return '/';
-}
 
 export default function LoginPage() {
   const { isLoggedIn, user, logIn } = useAuth();

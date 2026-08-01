@@ -15,6 +15,12 @@ export default function Layout() {
   const linkClass = ({ isActive }) =>
     isActive ? 'layout__link layout__link--active' : 'layout__link';
 
+  // Staff are here to work, not to order, so their dashboard link REPLACES Menu and Basket
+  // rather than joining them. Also what keeps the bar from overflowing on a phone, where
+  // "Deliveries" plus the role badge plus Log out already fills the width.
+  // The brand still links to "/", so the menu stays one tap away.
+  const isStaff = user?.role === ROLES.Owner || user?.role === ROLES.Driver;
+
   return (
     <div className="layout">
       <header className="layout__header">
@@ -26,28 +32,39 @@ export default function Layout() {
 
           <nav aria-label="Main"> {/* names the landmark, so screen readers can distinguish it from other navs later */}
             <ul className="layout__nav">
-              <li>
-                {/* end -> exact match only. Without it "/" prefixes every URL and stays active everywhere. */}
-                <NavLink to="/" end className={linkClass}>
-                  Menu
-                </NavLink>
-              </li>
-              <li>
-                <NavLink to="/basket" className={linkClass}>
-                  Basket
-                  {/* Explicit > 0: a bare `itemCount &&` would render a literal 0 when empty. */}
-                  {itemCount > 0 && (
-                    <span className="layout__badge" aria-label={`${itemCount} items in basket`}>
-                      {itemCount}
-                    </span>
-                  )}
-                </NavLink>
-              </li>
+              {!isStaff && (
+                <>
+                  <li>
+                    {/* end -> exact match only. Without it "/" prefixes every URL and stays active everywhere. */}
+                    <NavLink to="/" end className={linkClass}>
+                      Menu
+                    </NavLink>
+                  </li>
+                  <li>
+                    <NavLink to="/basket" className={linkClass}>
+                      Basket
+                      {/* Explicit > 0: a bare `itemCount &&` would render a literal 0 when empty. */}
+                      {itemCount > 0 && (
+                        <span className="layout__badge" aria-label={`${itemCount} items in basket`}>
+                          {itemCount}
+                        </span>
+                      )}
+                    </NavLink>
+                  </li>
+                </>
+              )}
               {/* Decides which link to DRAW, never what data comes back - the API is the guard. */}
               {user?.role === ROLES.Owner && (
                 <li>
                   <NavLink to="/owner" className={linkClass}>
                     Orders
+                  </NavLink>
+                </li>
+              )}
+              {user?.role === ROLES.Driver && (
+                <li>
+                  <NavLink to="/driver" className={linkClass}>
+                    Deliveries
                   </NavLink>
                 </li>
               )}
