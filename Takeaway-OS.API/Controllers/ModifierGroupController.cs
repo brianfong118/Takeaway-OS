@@ -54,10 +54,19 @@ public class ModifierGroupsController : ControllerBase
     {
         var result = await _modifierGroupService.DeleteAsync(id);
 
+        // Named rather than numbered, same reasoning as CategoriesController.Delete. Both causes
+        // stay in one sentence because the Restrict FKs fail as one DbUpdateException - telling
+        // them apart would cost two extra queries to say something the owner can see on screen.
+        if (result == DeleteResult.HasDependents)
+        {
+            var name = (await _modifierGroupService.GetByIdAsync(id))?.Name;
+            var subject = name is null ? $"Group {id}" : $"\"{name}\"";
+            return Conflict($"{subject} still has options, or is still used by a dish. Remove its options and untick it from any dish first.");
+        }
+
         return result switch
         {
             DeleteResult.NotFound => NotFound(),
-            DeleteResult.HasDependents => Conflict($"ModifierGroup {id} still has ModifierOptions or is still linked to a MenuItem. Delete/unlink them first."), // 409
             _ => NoContent()
         };
     }

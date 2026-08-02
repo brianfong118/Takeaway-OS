@@ -1,0 +1,285 @@
+.mod-manager {
+  max-width: 720px;
+  padding: var(--space-4);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.mod-manager__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.mod-manager__title {
+  font-size: 1.125rem;
+}
+
+.mod-manager__hint {
+  margin-top: var(--space-1);
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+}
+
+.mod-manager__close {
+  flex-shrink: 0;
+  padding: var(--space-2) var(--space-4);
+  font: inherit;
+  font-weight: 600;
+  color: var(--text-inverse);
+  background: var(--brand);
+  border: 1px solid var(--brand);
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+
+.mod-manager__close:hover {
+  background: var(--brand-dark);
+  border-color: var(--brand-dark);
+}
+
+.mod-manager__message {
+  padding: var(--space-4) 0;
+  font-size: 0.9375rem;
+  color: var(--text-muted);
+}
+
+.mod-manager__error {
+  margin-bottom: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  font-size: 0.875rem;
+  color: var(--danger);
+  background: var(--danger-bg);
+  border: 1px solid var(--danger);
+  border-radius: var(--radius);
+}
+
+.mod-manager__list {
+  list-style: none;
+}
+
+/* --- one group --- */
+
+/* Boxed, because a group owns the option rows nested under it and the nesting has to be visible
+   at a glance - a flat list of inputs would read as one long form. */
+.mod-group {
+  margin-bottom: var(--space-3);
+  padding: var(--space-3);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.mod-group__fields {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.mod-group__name {
+  flex: 1;
+  min-width: 8rem;
+}
+
+.mod-group__num {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.mod-group__num input {
+  width: 3.5rem;
+}
+
+.mod-group__req {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: 0.8125rem;
+  cursor: pointer;
+}
+
+/* Every text/number control in this panel shares one look. */
+.mod-group__name,
+.mod-group__num input,
+.mod-option__name,
+.mod-option__price {
+  padding: var(--space-2);
+  font-family: inherit;
+  font-size: 0.875rem;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.mod-group__name:focus,
+.mod-group__num input:focus,
+.mod-option__name:focus,
+.mod-option__price:focus {
+  outline: 2px solid var(--brand);
+  outline-offset: 1px;
+  border-color: var(--brand);
+}
+
+.mod-group__error {
+  margin-top: var(--space-2);
+  font-size: 0.8125rem;
+  color: var(--danger);
+}
+
+/* --- options inside a group --- */
+
+.mod-group__options {
+  list-style: none;
+  margin-top: var(--space-3);
+  padding-left: var(--space-3);
+  border-left: 2px solid var(--border); /* the visual "these belong to the group above" cue */
+}
+
+.mod-option {
+  padding: var(--space-1) 0;
+}
+
+.mod-option--off .mod-option__name {
+  text-decoration: line-through;
+  opacity: 0.7;
+}
+
+.mod-option__fields {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.mod-option__name {
+  flex: 1;
+  min-width: 7rem;
+}
+
+.mod-option__price {
+  width: 6rem;
+}
+
+.mod-option__preview {
+  min-width: 4rem;
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.mod-new-option,
+.mod-new-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.mod-new-option {
+  margin-top: var(--space-2);
+  padding-left: var(--space-3);
+}
+
+.mod-new-group {
+  margin-top: var(--space-4);
+  padding-top: var(--space-3);
+  border-top: 1px dashed var(--border);
+}
+
+/* --- buttons --- */
+
+.mod-group__save,
+.mod-group__delete,
+.mod-group__add,
+.mod-option__save,
+.mod-option__toggle,
+.mod-option__delete,
+.mod-option__add {
+  padding: var(--space-2) var(--space-3);
+  font: inherit;
+  font-size: 0.8125rem;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+
+.mod-group__save,
+.mod-option__save {
+  color: var(--text);
+  font-weight: 600;
+}
+
+/* Disabled is this button's resting state (nothing edited yet), so it must not read as broken. */
+.mod-group__save:disabled,
+.mod-option__save:disabled {
+  color: var(--text-muted);
+  opacity: 0.5;
+  cursor: default;
+}
+
+.mod-option__toggle {
+  color: var(--text-muted);
+}
+
+.mod-option__toggle:hover:not(:disabled) {
+  color: var(--text);
+  border-color: var(--text-muted);
+}
+
+.mod-group__delete,
+.mod-option__delete {
+  color: var(--text-muted);
+}
+
+.mod-group__delete:hover:not(:disabled),
+.mod-option__delete:hover:not(:disabled) {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+/* Both halves needed: the plain hover rule above is (0,3,0) and beats a lone (0,1,0) class while
+   the pointer still rests on the button after the first tap, which would paint red on red. */
+.mod-group__delete--confirming,
+.mod-group__delete--confirming:hover:not(:disabled),
+.mod-option__delete--confirming,
+.mod-option__delete--confirming:hover:not(:disabled) {
+  color: var(--text-inverse);
+  background: var(--danger);
+  border-color: var(--danger);
+  font-weight: 600;
+}
+
+.mod-group__add,
+.mod-option__add {
+  color: var(--text-inverse);
+  background: var(--brand);
+  border-color: var(--brand);
+  font-weight: 600;
+}
+
+.mod-group__add:hover:not(:disabled),
+.mod-option__add:hover:not(:disabled) {
+  background: var(--brand-dark);
+  border-color: var(--brand-dark);
+}
+
+.mod-group__save:disabled,
+.mod-group__delete:disabled,
+.mod-option__save:disabled,
+.mod-option__toggle:disabled,
+.mod-option__delete:disabled,
+.mod-option__add:disabled,
+.mod-group__add:disabled {
+  cursor: progress;
+  opacity: 0.6;
+}

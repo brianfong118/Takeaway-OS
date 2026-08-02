@@ -55,10 +55,21 @@ public class CategoriesController : ControllerBase
     {
         var result = await _categoryService.DeleteAsync(id);
 
+        // Named, not numbered. This message is shown to the owner beside a row labelled
+        // "Starters", and an id they never see anywhere else in the UI tells them nothing.
+        // The extra read only happens on this path, and the row is certainly still there:
+        // the delete was just refused because of it.
+        if (result == DeleteResult.HasDependents)
+        {
+            var name = (await _categoryService.GetByIdAsync(id))?.Name;
+            return Conflict(name is null
+                ? $"Category {id} still has menu items. Move or delete them first."
+                : $"\"{name}\" still has menu items. Move or delete them first.");
+        }
+
         return result switch
         {
             DeleteResult.NotFound => NotFound(),
-            DeleteResult.HasDependents => Conflict($"Category {id} still has MenuItems. Delete or reassign them first."), // 409
             _ => NoContent()
         };
     }

@@ -16,6 +16,8 @@ import {
 import { formatPrice } from '../utils/format.js';
 import MenuItemForm from '../components/MenuItemForm.jsx';
 import CategoryManager from '../components/CategoryManager.jsx';
+import ModifierManager from '../components/ModifierManager.jsx';
+import ItemModifiersPanel from '../components/ItemModifiersPanel.jsx';
 import OwnerNav from '../components/OwnerNav.jsx';
 import './OwnerMenuPage.css';
 
@@ -26,9 +28,11 @@ export default function OwnerMenuPage() {
   const [error, setError] = useState(null);
   const [busyIds, setBusyIds] = useState(() => new Set());
   const [confirmingDelete, setConfirmingDelete] = useState(null);
-  // Which view is on screen: null = the list, 'new' = create form, 'categories' = the category
-  // manager, an item object = edit form for that item. One piece of state rather than a set of
-  // booleans, which could contradict each other by showing two panels or none.
+  // Which view is on screen. null = the list, otherwise a tagged object:
+  //   { type: 'new' | 'categories' | 'modifiers' } | { type: 'edit' | 'links', item }
+  // One piece of state rather than a set of booleans, which could contradict each other by
+  // showing two panels at once. Tagged rather than a bare value because 'edit' and 'links' both
+  // carry an item, so the item alone no longer says which panel is meant.
   const [panel, setPanel] = useState(null);
 
   // No polling here, unlike the order board. The menu changes when the owner changes it, and a
@@ -110,18 +114,19 @@ export default function OwnerMenuPage() {
   // the owner still needs to fix. Catching it would swallow that and leave the form thinking
   // it saved.
   async function handleSave(payload) {
-    if (panel === 'new') {
+    if (panel.type === 'new') {
       const created = await createMenuItem(payload);
       setItems((current) => sortItems([...current, created]));
     } else {
-      await updateMenuItem(panel.id, payload);
+      const { item } = panel;
+      await updateMenuItem(item.id, payload);
       // 204 carries no body, so the row is rebuilt locally. categoryName is re-derived rather
       // than kept from the old item, which would be stale if the category just changed.
       const categoryName =
-        categories.find((c) => c.id === payload.categoryId)?.name ?? panel.categoryName;
+        categories.find((c) => c.id === payload.categoryId)?.name ?? item.categoryName;
       // Sorted too: an edit can rename the item, which moves it within its section.
       setItems((current) =>
-        sortItems(current.map((i) => (i.id === panel.id ? { ...i, ...payload, categoryName } : i))),
+        sortItems(current.map((i) => (i.id === item.id ? { ...i, ...payload, categoryName } : i))),
       );
     }
     setPanel(null);
@@ -150,7 +155,7 @@ export default function OwnerMenuPage() {
 
   if (loading) return <p className="menu-admin__message">Loading menu...</p>;
 
-  if (panel === 'categories') {
+  if (panel?.type === 'categories') {
     return (
       <div className="menu-admin">
         <OwnerNav />
@@ -165,6 +170,28 @@ export default function OwnerMenuPage() {
     );
   }
 
+  if (panel?.type === 'modifiers') {
+    return (
+      <div className="menu-admin">
+        <OwnerNav />
+        <ModifierManager onClose={() => setPanel(null)} />
+      </div>
+    );
+  }
+
+  if (panel?.type === 'links') {
+    return (
+      <div className="menu-admin">
+        <OwnerNav />
+        <ItemModifiersPanel
+          key={panel.item.id}
+          item={panel.item}
+          onClose={() => setPanel(null)}
+        />
+      </div>
+    );
+  }
+
   if (panel) {
     return (
       <div className="menu-admin">
@@ -173,8 +200,8 @@ export default function OwnerMenuPage() {
           // Remounts the form when switching straight from one item to another: without a key
           // React reuses the instance and useState's initial value is ignored on a re-render,
           // so the second item would open showing the first one's values.
-          key={panel === 'new' ? 'new' : panel.id}
-          item={panel === 'new' ? null : panel}
+          key={panel.type === 'new' ? 'new' : panel.item.id}
+          item={panel.type === 'new' ? null : panel.item}
           categories={categories}
           onSubmit={handleSave}
           onCancel={() => setPanel(null)}
@@ -196,16 +223,26 @@ export default function OwnerMenuPage() {
           <button
             type="button"
             className="menu-admin__secondary"
-            onClick={() => setPanel('categories')}
+            onClick={() => setPanel({ type: 'categories' })}
           >
             Categories
+          </button>
+          {/* "Option groups", not "Options": the row buttons are already called Options, and
+              these two do different jobs - this one edits the shared groups themselves, the row
+              one picks which of them a dish offers. */}
+          <button
+            type="button"
+            className="menu-admin__secondary"
+            onClick={() => setPanel({ type: 'modifiers' })}
+          >
+            Option groups
           </button>
           <button
             type="button"
             className="menu-admin__new"
             // An item must belong to a category, so with none there is nothing valid to create.
             disabled={categories.length === 0}
-            onClick={() => setPanel('new')}
+            onClick={() => setPanel({ type: 'new' })}
           >
             New item
           </button>
@@ -243,7 +280,8 @@ export default function OwnerMenuPage() {
                   busy={busyIds.has(item.id)}
                   confirmingDelete={confirmingDelete === item.id}
                   onToggle={() => toggleAvailability(item)}
-                  onEdit={() => setPanel(item)}
+                  onEdit={() => setPanel({ type: 'edit', item })}
+                  onLinks={() => setPanel({ type: 'links', item })}
                   onDelete={() => handleDelete(item)}
                 />
               ))}
@@ -263,7 +301,8 @@ export default function OwnerMenuPage() {
                 busy={busyIds.has(item.id)}
                 confirmingDelete={confirmingDelete === item.id}
                 onToggle={() => toggleAvailability(item)}
-                onEdit={() => setPanel(item)}
+                onEdit={() => setPanel({ type: 'edit', item })}
+                onLinks={() => setPanel({ type: 'links', item })}
                 onDelete={() => handleDelete(item)}
               />
             ))}
@@ -276,7 +315,7 @@ export default function OwnerMenuPage() {
 
 // Local to this page rather than in /components: nothing else renders a row like this, and it
 // would only gain a props contract to maintain. Promote it if a second page ever needs it.
-function MenuItemRow({ item, busy, confirmingDelete, onToggle, onEdit, onDelete }) {
+function MenuItemRow({ item, busy, confirmingDelete, onToggle, onEdit, onLinks, onDelete }) {
   return (
     <li className={`item-row ${item.isAvailable ? '' : 'item-row--off'}`}>
       <div className="item-row__main">
@@ -302,6 +341,12 @@ function MenuItemRow({ item, busy, confirmingDelete, onToggle, onEdit, onDelete 
 
       <button type="button" className="item-row__edit" disabled={busy} onClick={onEdit}>
         Edit
+      </button>
+
+      {/* Named for what the customer sees ("Extra chicken +£1.50"), not for the schema's
+          "modifier groups" - the owner never meets that word anywhere else. */}
+      <button type="button" className="item-row__edit" disabled={busy} onClick={onLinks}>
+        Options
       </button>
 
       <button

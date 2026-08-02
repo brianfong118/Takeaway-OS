@@ -1,0 +1,121 @@
+.item-mods {
+  max-width: 620px;
+  padding: var(--space-4);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.item-mods__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.item-mods__title {
+  font-size: 1.125rem;
+}
+
+.item-mods__hint {
+  margin-top: var(--space-1);
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+}
+
+.item-mods__close {
+  flex-shrink: 0;
+  padding: var(--space-2) var(--space-4);
+  font: inherit;
+  font-weight: 600;
+  color: var(--text-inverse);
+  background: var(--brand);
+  border: 1px solid var(--brand);
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+
+.item-mods__close:hover {
+  background: var(--brand-dark);
+  border-color: var(--brand-dark);
+}
+
+.item-mods__message {
+  padding: var(--space-4) 0;
+  font-size: 0.9375rem;
+  color: var(--text-muted);
+}
+
+.item-mods__error {
+  margin-bottom: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  font-size: 0.875rem;
+  color: var(--danger);
+  background: var(--danger-bg);
+  border: 1px solid var(--danger);
+  border-radius: var(--radius);
+}
+
+.item-mods__list {
+  list-style: none;
+}
+
+.mod-link {
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.mod-link__label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  cursor: pointer;
+}
+
+.mod-link__name {
+  font-weight: 600;
+}
+
+.mod-link__rule {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+/* Indented to the checkbox's text, so the options read as belonging to the group above them. */
+.mod-link__options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-2);
+  margin-top: var(--space-2);
+  margin-left: 1.6rem;
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+}
+
+/* Chips, so a long group of options wraps into readable units instead of one run-on line. */
+.mod-link__option {
+  padding: 2px var(--space-2);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+}
+
+/* A deactivated option still shows here: this screen is where it gets switched back on. */
+.mod-link__option--off {
+  opacity: 0.6;
+  text-decoration: line-through;
+}
+
+.mod-link__empty {
+  font-style: italic;
+}
+
+/* Linked groups get a quiet tint, so which ones apply is readable without checking every box. */
+.mod-link--on {
+  background: var(--success-bg);
+  margin-inline: calc(var(--space-3) * -1);
+  padding-inline: var(--space-3);
+  border-radius: var(--radius);
+}
