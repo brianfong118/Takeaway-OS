@@ -1,0 +1,278 @@
+.settings__title {
+  margin-bottom: var(--space-4);
+  font-size: 1.5rem;
+}
+
+.settings__message {
+  padding: var(--space-5) 0;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.settings__error {
+  margin-bottom: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  font-size: 0.875rem;
+  color: var(--danger);
+  background: var(--danger-bg);
+  border: 1px solid var(--danger);
+  border-radius: var(--radius);
+}
+
+.settings__card {
+  max-width: 720px;
+  margin-bottom: var(--space-4);
+  padding: var(--space-4);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.settings__card-title {
+  font-size: 1.125rem;
+}
+
+.settings__hint {
+  margin: var(--space-1) 0 var(--space-4);
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+}
+
+.settings__label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.settings__input {
+  padding: var(--space-2);
+  font-family: inherit;
+  font-size: 0.9375rem;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.settings__input:focus {
+  outline: 2px solid var(--brand);
+  outline-offset: 1px;
+  border-color: var(--brand);
+}
+
+.settings__input:disabled {
+  background: var(--bg);
+  color: var(--text-muted);
+}
+
+/* --- closure --- */
+
+/* The line that mirrors what a customer is told, so it is styled as a status readout rather
+   than as a form label. */
+.closure__status {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  border-radius: var(--radius);
+}
+
+.closure__dot {
+  width: 10px;
+  height: 10px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: currentColor; /* inherits whichever status colour is set below */
+}
+
+.closure__status--open {
+  color: var(--success);
+  background: var(--success-bg);
+}
+
+.closure__status--shut {
+  color: var(--danger);
+  background: var(--danger-bg);
+}
+
+.closure__controls {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-3);
+}
+
+.closure__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  flex: 1;
+  min-width: 0;
+}
+
+/* --- schedule --- */
+
+.schedule {
+  list-style: none;
+}
+
+.schedule__day {
+  display: grid;
+  grid-template-columns: 6.5rem 1fr; /* fixed day column, so every day's rows start on one line */
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+  border-top: 1px solid var(--border);
+}
+
+.schedule__day-name {
+  font-size: 0.9375rem;
+  padding-top: var(--space-2);
+}
+
+.schedule__windows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.schedule__closed {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.window-row__fields,
+.window-new {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.window-row__time {
+  /* Time inputs size themselves oddly across browsers; a floor keeps the columns aligned. */
+  min-width: 7rem;
+}
+
+.window-row__to {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+}
+
+/* The plain-language reading of the stored values, which is the only place "next day" appears -
+   two time boxes alone cannot say that the window crosses midnight. */
+.window-row__desc {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+}
+
+.window-row__error {
+  margin-top: var(--space-1);
+  font-size: 0.8125rem;
+  color: var(--danger);
+}
+
+/* The add row is visually quieter than the saved rows above it. */
+.window-new {
+  padding-top: var(--space-2);
+  border-top: 1px dashed var(--border);
+}
+
+/* --- buttons --- */
+
+.settings__save,
+.settings__delete,
+.settings__add,
+.settings__primary,
+.settings__danger {
+  padding: var(--space-2) var(--space-3);
+  font: inherit;
+  font-size: 0.8125rem;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+
+.settings__save {
+  color: var(--text);
+  font-weight: 600;
+}
+
+/* Resting state, so it must read as inactive rather than broken. */
+.settings__save:disabled {
+  color: var(--text-muted);
+  opacity: 0.5;
+  cursor: default;
+}
+
+.settings__delete {
+  color: var(--text-muted);
+}
+
+.settings__delete:hover:not(:disabled) {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+/* Both halves, so the pointer still resting on the button after the first tap cannot repaint
+   danger-red text onto the danger-red confirm background. */
+.settings__delete--confirming,
+.settings__delete--confirming:hover:not(:disabled) {
+  color: var(--text-inverse);
+  background: var(--danger);
+  border-color: var(--danger);
+  font-weight: 600;
+}
+
+.settings__add,
+.settings__primary {
+  color: var(--text-inverse);
+  background: var(--brand);
+  border-color: var(--brand);
+  font-weight: 600;
+}
+
+.settings__add:hover:not(:disabled),
+.settings__primary:hover:not(:disabled) {
+  background: var(--brand-dark);
+  border-color: var(--brand-dark);
+}
+
+.settings__danger {
+  color: var(--text-inverse);
+  background: var(--danger);
+  border-color: var(--danger);
+  font-weight: 600;
+  padding: var(--space-2) var(--space-4);
+}
+
+.settings__primary {
+  padding: var(--space-2) var(--space-4);
+}
+
+.settings__save:disabled,
+.settings__delete:disabled,
+.settings__add:disabled,
+.settings__primary:disabled,
+.settings__danger:disabled {
+  cursor: progress;
+  opacity: 0.6;
+}
+
+@media (max-width: 560px) {
+  .schedule__day {
+    grid-template-columns: 1fr; /* day name above its rows once the two-column split gets tight */
+    gap: var(--space-2);
+  }
+
+  .closure__controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

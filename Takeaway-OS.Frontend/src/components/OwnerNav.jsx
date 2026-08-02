@@ -10,6 +10,7 @@ const SECTIONS = [
   // Orders tab would stay active on all of them.
   { to: '/owner', label: 'Orders', end: true },
   { to: '/owner/menu', label: 'Menu' },
+  { to: '/owner/settings', label: 'Settings' },
 ];
 
 // variant 'inline' drops the strip's own rule and bottom margin so it can sit on a row the page

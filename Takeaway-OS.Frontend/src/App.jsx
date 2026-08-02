@@ -9,6 +9,7 @@ import OrderConfirmationPage from './pages/OrderConfirmationPage.jsx';
 import LoginPage from './pages/LoginPage.jsx';
 import OwnerDashboardPage from './pages/OwnerDashboardPage.jsx';
 import OwnerMenuPage from './pages/OwnerMenuPage.jsx';
+import OwnerSettingsPage from './pages/OwnerSettingsPage.jsx';
 import DriverDashboardPage from './pages/DriverDashboardPage.jsx';
 import NotFoundPage from './pages/NotFoundPage.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
@@ -51,6 +52,7 @@ export default function App() {
         <Route element={<ProtectedRoute roles={[ROLES.Owner]} />}>
           <Route path="owner" element={<OwnerDashboardPage />} />
           <Route path="owner/menu" element={<OwnerMenuPage />} />
+          <Route path="owner/settings" element={<OwnerSettingsPage />} />
         </Route>
 
         <Route element={<ProtectedRoute roles={[ROLES.Driver]} />}>
