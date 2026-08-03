@@ -1,4 +1,6 @@
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { getSettings } from '../api/settings.js';
 import { useBasket } from '../hooks/useBasket.js';
 import { MAX_LINE_QUANTITY, lineTotal } from '../utils/basket.js';
 import { formatPrice, formatPriceDelta } from '../utils/format.js';
@@ -6,6 +8,25 @@ import './BasketPage.css';
 
 export default function BasketPage() {
   const { lines, subtotal, setLineQuantity, removeLine, clearBasket } = useBasket();
+
+  // null covers both "still loading" and "the request failed", and both render nothing.
+  const [deliveryFee, setDeliveryFee] = useState(null);
+
+  useEffect(() => {
+    let ignore = false;
+
+    getSettings()
+      .then((settings) => {
+        if (!ignore) setDeliveryFee(settings.deliveryFee);
+      })
+      .catch(() => {
+        // Silent: this is a nicety, and the checkout quotes the real figure before anyone pays.
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, []);
 
   if (lines.length === 0) {
     return (
@@ -84,7 +105,11 @@ export default function BasketPage() {
 
         {/* Says subtotal, not total: the server recalculates from current menu prices when the
             order is placed, and that figure is what gets charged. */}
-        <p className="basket__disclaimer">Confirmed when you check out.</p>
+        <p className="basket__disclaimer">
+          {deliveryFee > 0
+            ? `Confirmed when you check out. Delivery adds ${formatPrice(deliveryFee)}.`
+            : 'Confirmed when you check out.'}
+        </p>
 
         {/* A Link, not a button: checkout is a destination, so it should be a real anchor the
             customer can middle-click or open in a new tab. Styled to look like the button it

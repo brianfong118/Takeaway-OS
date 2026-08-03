@@ -19,7 +19,12 @@ public class RestaurantSettings
     // Chosen over an auto-expiring ClosedUntil for simplicity
     public bool IsTemporarilyClosed { get; set; } = false;
 
-    // Shown to customers on the "we're closed" banner 
+    // Shown to customers on the "we're closed" banner
     // Empty when open, or when the Owner closes without giving a reason.
     public string ClosureReason { get; set; } = string.Empty;
+
+    // The CURRENT delivery fee. Not what any existing order was charged:
+    // every order snapshots this onto Order.DeliveryFee at creation, so changing
+    // it here only affects orders placed from now on
+    public decimal DeliveryFee { get; set; } = 0m;
 }

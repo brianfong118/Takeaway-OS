@@ -112,7 +112,10 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<int>
         {
             Id = Models.RestaurantSettings.SingletonId,
             IsTemporarilyClosed = false,
-            ClosureReason = string.Empty
+            ClosureReason = string.Empty,
+            // 0, not a realistic price: a real fee is the owner's data, so it gets typed
+            // into the settings UI rather than baked into a migration.
+            DeliveryFee = 0m
         });
 
 

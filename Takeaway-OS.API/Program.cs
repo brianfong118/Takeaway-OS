@@ -99,6 +99,7 @@ builder.Services.AddScoped<IMenuItemModifierGroupService, MenuItemModifierGroupS
 builder.Services.AddScoped<IOrderService, OrderService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IBusinessHoursService, BusinessHoursService>();
+builder.Services.AddScoped<IRestaurantSettingsService, RestaurantSettingsService>();
 builder.Services.AddScoped<IAddressService, AddressService>();
 builder.Services.AddScoped<ICustomerService, CustomerService>();
 builder.Services.AddScoped<IStripeService, StripeService>();

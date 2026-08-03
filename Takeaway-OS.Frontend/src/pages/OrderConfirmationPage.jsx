@@ -230,6 +230,22 @@ export default function OrderConfirmationPage() {
           ))}
         </ul>
 
+        {/* Broken out only when there was a fee, so a collection receipt stays a single line*/}
+        {order.deliveryFee > 0 && (
+          <>
+            <div className="checkout__row">
+              <span>Subtotal</span>
+              {/* Derived from the server's own two figures rather than re-summing the lines,
+                  so the three rows on screen always reconcile. */}
+              <span>{formatPrice(order.total - order.deliveryFee)}</span>
+            </div>
+            <div className="checkout__row">
+              <span>Delivery</span>
+              <span>{formatPrice(order.deliveryFee)}</span>
+            </div>
+          </>
+        )}
+
         <div className="checkout__subtotal">
           <span>Total</span>
           {/* The server's own figure, not a sum of the lines above - the same number Stripe charged. */}

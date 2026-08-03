@@ -10,12 +10,18 @@ public class OrderService : IOrderService
     private readonly AppDbContext _context;
     private readonly IBusinessHoursService _businessHoursService;
     private readonly IStripeService _stripeService;
+    private readonly IRestaurantSettingsService _settingsService;
 
-    public OrderService(AppDbContext context, IBusinessHoursService businessHoursService, IStripeService stripeService)
+    public OrderService(
+        AppDbContext context,
+        IBusinessHoursService businessHoursService,
+        IStripeService stripeService,
+        IRestaurantSettingsService settingsService)
     {
         _context = context;
         _businessHoursService = businessHoursService;
         _stripeService = stripeService;
+        _settingsService = settingsService;
     }
 
     public async Task<List<OrderDto>> GetAllAsync()
@@ -168,11 +174,17 @@ public class OrderService : IOrderService
             deliveryAddress = FormatAddress(address);
         }
 
+        // SNAPSHOT the fee that applies right now, exactly like OrderItem.UnitPrice below
+        // Collection records 0, which is what lets ComputeTotal add the column with no branch.
+        var settings = await _settingsService.GetAsync();
+        var deliveryFee = dto.OrderType == OrderType.Delivery ? settings.DeliveryFee : 0m;
+
         var order = new Order
         {
             CustomerName = dto.CustomerName,
             CustomerPhone = dto.CustomerPhone,
             DeliveryAddress = deliveryAddress,
+            DeliveryFee = deliveryFee,
             CustomerId = customerId, // null = guest; never read from dto, only from the validated JWT
             OrderType = dto.OrderType,
             Notes = dto.Notes,
@@ -366,6 +378,7 @@ public class OrderService : IOrderService
             CustomerId = order.CustomerId,
             DriverId = order.DriverId,
             Items = MapItems(order),
+            DeliveryFee = order.DeliveryFee, // the snapshot, read straight off the row
             // Never stored — always derived fresh from the line items so it can't drift from them.
             Total = ComputeTotal(order)
         };
@@ -384,6 +397,7 @@ public class OrderService : IOrderService
             Notes = order.Notes,
             CreatedAt = order.CreatedAt,
             Items = MapItems(order),
+            DeliveryFee = order.DeliveryFee,
             // Same ComputeTotal as MapToDto, so the guest's receipt, the Owner's list and the amount
             // charged in Stripe are all one calculation and can't drift apart.
             Total = ComputeTotal(order)
@@ -410,13 +424,16 @@ public class OrderService : IOrderService
         }).ToList();
     }
 
-    // The authoritative order total: sum(UnitPrice * Quantity) + sum(modifier PriceDeltas).
+    // The authoritative order total: sum(UnitPrice * Quantity) + sum(modifier PriceDeltas) + the delivery fee.
     // Extracted so the amount we charge in Stripe and the Total we show the client come from the
     // exact same calculation -> never disagree
     internal static decimal ComputeTotal(Order order)
     {
         return order.OrderItems.Sum(oi => oi.UnitPrice * oi.Quantity)
-             + order.OrderItems.Sum(oi => oi.OrderItemModifiers.Sum(m => m.PriceDelta));
+             + order.OrderItems.Sum(oi => oi.OrderItemModifiers.Sum(m => m.PriceDelta))
+             // Per ORDER, not per line -> added once, outside both sums. Already 0 on a
+             // collection order, so there's deliberately no OrderType check here.
+             + order.DeliveryFee;
     }
 
     // The webhook's state change, kept here with every other Order status transition.

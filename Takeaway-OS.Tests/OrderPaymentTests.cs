@@ -11,8 +11,8 @@ namespace Takeaway_OS.Tests;
 public class OrderPaymentTests
 {
     // A fresh, isolated in-memory database per test (unique name), so tests never bleed into each other.
-    // MarkOrderPaidAsync only touches the DbContext, so the other two constructor dependencies
-    // (business-hours and Stripe) are never called here and can safely be null.
+    // MarkOrderPaidAsync only touches the DbContext, so the other three constructor dependencies
+    // (business-hours, Stripe and settings) are never called here and can safely be null.
     private static (OrderService service, AppDbContext context) BuildService()
     {
         var options = new DbContextOptionsBuilder<AppDbContext>()
@@ -20,7 +20,7 @@ public class OrderPaymentTests
             .Options;
 
         var context = new AppDbContext(options);
-        var service = new OrderService(context, null!, null!);
+        var service = new OrderService(context, null!, null!, null!);
         return (service, context);
     }
 

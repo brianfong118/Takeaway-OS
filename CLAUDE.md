@@ -101,6 +101,12 @@ As built, the specifics:
 - An invalid window (overlap / zero-length) is a plain **400** — the owner can fix it by picking different times. That's the opposite call to the customer-facing 409 above, and deliberately so: 409 there means "nothing about your request is wrong, we're just shut".
 - Real opening hours are the owner's *data*, so they stay out of migrations — only the `RestaurantSettings` singleton is seeded structurally. `Data/seed-opening-hours.sql` exists to bulk-load a dev schedule.
 
+**The delivery fee is Owner-configured and snapshotted onto the order**: `RestaurantSettings.DeliveryFee` holds the *current* fee, editable by the Owner (the same singleton row as the closure flag). `Orders.DeliveryFee` is a **snapshot** taken at creation, on exactly the same reasoning as `OrderItems.UnitPrice`: raising the fee next month must not silently rewrite what last month's orders cost. `ComputeTotal` becomes `sum(UnitPrice × Quantity) + sum(modifier deltas) + Order.DeliveryFee`, so the amount charged in Stripe, the Owner's list, and the guest receipt all pick the fee up from one place and cannot diverge.
+- The fee is **per order, not per line**, so it must never go through `lineTotal` in `utils/basket.js`. The frontend adds it once, at the basket/checkout summary level. Putting it inside `lineTotal` would multiply it by the number of lines.
+- **Collection orders snapshot `0`**, which is why `ComputeTotal` adds the column unconditionally with no `OrderType` branch. "Does this order pay for delivery?" is decided once, at creation, and is then a recorded fact about the row rather than a rule re-evaluated on every read.
+- **Every delivery order pays the fee.** No minimum order value and no free-delivery-over-£X threshold: both were considered and rejected for v1. Either one, if it's ever wanted, is a conditional at snapshot time, not a change to the formula.
+- Seeded structurally at `0.00`, not at a realistic price, for the same reason opening hours stay out of migrations: the real number is the owner's *data*. A fresh database therefore charges nothing for delivery until the Owner sets a fee.
+
 **Customer accounts are optional, not required**: Guest checkout (name/phone/address/notes, no login) stays fully supported and is the default path — accounts are additive on top of it, not a replacement. A `Customer` role sits alongside the `Owner`/`Driver` roles in Identity — there is no `Staff` role (see V1 Scope). `Orders.CustomerId` is a nullable FK — null for guest orders, populated for logged-in orders. Guest contact fields (name/phone/address) stay on `Orders` regardless of whether a `CustomerId` is present, since delivery/contact needs them either way. A registered customer gets saved addresses, order history, and faster repeat checkout.
 
 **A guest reads their own order with a capability token, not a login**: `GET /api/orders/{id}` is `[Authorize(Roles = "Owner,Customer")]` and stays that way — order ids are sequential, so anonymous access there would let anyone walk every customer's name, phone and address. Instead `Orders.PublicToken` (a non-nullable `Guid`, v4, unique-indexed) is generated on the entity at creation and returned **only** in `OrderCreateResponseDto` — the one response that provably goes to the person who placed the order. `GET /api/orders/by-token/{token:guid}` is `[AllowAnonymous]`: holding 122 random bits *is* the authorisation, and there is no id space to enumerate. The `{token:guid}` route constraint means a malformed token 404s at routing without reaching the database.
@@ -135,6 +141,8 @@ As built, the specifics:
 - Driver role and driver dashboard
 - Real payment processing (Stripe)
 - Enforce business hours — reject order submission outside opening hours, with a manual override for holidays/closures
+- Owner-configurable delivery fee, snapshotted onto the order at creation (see Architecture Decisions)
+- Delivery radius by postcode — reject a delivery order to an address outside the allowed postcodes
 
 **Out of scope for v1 (do not build unless asked):**
 - Real-time updates (WebSockets/SignalR)

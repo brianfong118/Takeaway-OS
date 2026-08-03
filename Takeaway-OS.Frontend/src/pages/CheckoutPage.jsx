@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ORDER_TYPES, createOrder } from '../api/orders.js';
 import { getRestaurantStatus } from '../api/openingHours.js';
+import { getSettings } from '../api/settings.js';
 import { useBasket } from '../hooks/useBasket.js';
 import { savePendingPayment } from '../utils/pendingPayment.js';
 import { formatPrice } from '../utils/format.js';
@@ -24,6 +25,7 @@ export default function CheckoutPage() {
 
   const [form, setForm] = useState(EMPTY_FORM);
   const [status, setStatus] = useState(null); // RestaurantStatusDto, or null while unknown
+  const [deliveryFee, setDeliveryFee] = useState(null); // null = not known yet, NOT "free"
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
 
@@ -31,14 +33,24 @@ export default function CheckoutPage() {
     let ignore = false; // flipped by the cleanup below, to drop a response arriving after unmount
 
     async function load() {
-      try {
-        const data = await getRestaurantStatus();
-        if (!ignore) setStatus(data);
-      } catch {
-        // A failed status check must not block checkout
-        // OrderService re-runs the exact same check on submit. 
-        // Leaving status null allows customer to try
-      }
+      // allSettled, not all: Promise.all rejects as soon as either request does, so one dead
+      // endpoint would cost us BOTH answers. Here each is independently useful.
+      const [statusResult, feeResult] = await Promise.allSettled([
+        getRestaurantStatus(),
+        getSettings(),
+      ]);
+
+      if (ignore) return;
+
+      // A failed status check must not block checkout
+      // OrderService re-runs the exact same check on submit.
+      // Leaving status null allows customer to try
+      if (statusResult.status === 'fulfilled') setStatus(statusResult.value);
+
+      // Left null on failure, which hides the Total rather than showing one with the fee
+      // silently missing. Quoting a number lower than what Stripe then charges is the worse
+      // outcome by far, so "no total" is the safer thing to render.
+      if (feeResult.status === 'fulfilled') setDeliveryFee(feeResult.value.deliveryFee);
     }
 
     load();
@@ -46,7 +58,7 @@ export default function CheckoutPage() {
     return () => {
       ignore = true;
     };
-  }, []); // empty dependency array -> runs once on mount; the status doesn't depend on any prop
+  }, []); // empty dependency array -> runs once on mount; neither value depends on a prop
 
   // event.target is the DOM element that fired the change; its `name` matches a key in the form
   // object, so one handler serves every field instead of one closure per input.
@@ -112,6 +124,14 @@ export default function CheckoutPage() {
   }
 
   const isDelivery = form.orderType === ORDER_TYPES.Delivery;
+
+  // Collection is 0 by definition, so it never has to wait on the settings fetch. Delivery
+  // stays null until the fee is known, which is what propagates into `total` below.
+  const appliedFee = isDelivery ? deliveryFee : 0;
+
+  // Mirrors OrderService.ComputeTotal's last term: the fee is added ONCE, per order, here at
+  // the summary. It must never go through lineTotal, which would multiply it by the lines.
+  const total = appliedFee === null ? null : subtotal + appliedFee;
 
   // Two independent ways to learn the shop is shut: the status fetch on mount, and a 409 from
   // the submit itself (the shop can close in between). 
@@ -254,12 +274,39 @@ export default function CheckoutPage() {
             ))}
           </ul>
 
-          <div className="checkout__subtotal">
-            <span>Subtotal</span>
-            <span>{formatPrice(subtotal)}</span>
-          </div>
+          {/* Only broken out for delivery. On collection the subtotal IS the total, and two
+              rows showing the same number reads as a bug rather than as clarity. */}
+          {isDelivery && (
+            <>
+              <div className="checkout__row">
+                <span>Subtotal</span>
+                <span>{formatPrice(subtotal)}</span>
+              </div>
+              {deliveryFee !== null && (
+                <div className="checkout__row">
+                  <span>Delivery</span>
+                  <span>{formatPrice(deliveryFee)}</span>
+                </div>
+              )}
+            </>
+          )}
+
+          {total === null ? (
+            <p className="checkout__disclaimer">
+              We could not load the delivery charge just now. Your total will be confirmed when
+              you place the order.
+            </p>
+          ) : (
+            <div className="checkout__subtotal">
+              <span>Total</span>
+              <span>{formatPrice(total)}</span>
+            </div>
+          )}
+
+          {/* the server prices the order from the live menu, so a repricing while the basket
+              sat open can still move the figure. */}
           <p className="checkout__disclaimer">
-            The final amount is calculated by the restaurant when the order is placed.
+            Prices are taken from the live menu when you place the order.
           </p>
         </section>
 

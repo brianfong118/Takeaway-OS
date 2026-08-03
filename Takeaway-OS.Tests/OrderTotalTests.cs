@@ -4,7 +4,7 @@ using Takeaway_OS.API.Services;
 namespace Takeaway_OS.Tests;
 
 // Unit tests for the order Total computed in OrderService.MapToDto:
-//   sum(UnitPrice * Quantity)  +  sum(every modifier's PriceDelta)
+//   sum(UnitPrice * Quantity)  +  sum(every modifier's PriceDelta)  +  DeliveryFee
 // Total is never stored; it's derived on every read so this test pins the formula down.
 public class OrderTotalTests
 {
@@ -61,5 +61,43 @@ public class OrderTotalTests
         var dto = OrderService.MapToDto(order);
 
         Assert.Equal(0m, dto.Total);
+    }
+
+    [Fact]
+    public void Delivery_fee_is_added_once_per_order_not_once_per_line()
+    {
+        // Three lines on purpose: a fee folded into the per-line calculation would be
+        // counted three times, which is the exact mistake this pins down.
+        var order = new Order
+        {
+            DeliveryFee = 2.50m,
+            OrderItems = new List<OrderItem>
+            {
+                new OrderItem { UnitPrice = 5.00m, Quantity = 1 },
+                new OrderItem { UnitPrice = 3.00m, Quantity = 2 },
+                new OrderItem { UnitPrice = 1.00m, Quantity = 1 }
+            }
+        };
+
+        var dto = OrderService.MapToDto(order);
+
+        Assert.Equal(2.50m, dto.DeliveryFee);  // surfaced separately so the client can show a breakdown
+        Assert.Equal(14.50m, dto.Total);       // 5.00 + 6.00 + 1.00 + 2.50 once = 14.50
+    }
+
+    [Fact]
+    public void A_zero_delivery_fee_leaves_the_total_untouched()
+    {
+        // What every collection order looks like: the OrderType branch happens at creation,
+        // so by the time the total is computed a collection order is just a fee of 0.
+        var order = new Order
+        {
+            DeliveryFee = 0m,
+            OrderItems = new List<OrderItem> { new OrderItem { UnitPrice = 8.00m, Quantity = 1 } }
+        };
+
+        var dto = OrderService.MapToDto(order);
+
+        Assert.Equal(8.00m, dto.Total);
     }
 }

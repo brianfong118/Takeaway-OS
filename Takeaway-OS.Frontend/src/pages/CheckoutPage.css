@@ -146,6 +146,16 @@
   color: var(--text-muted);
 }
 
+/* Breakdown lines (Subtotal, Delivery) that lead up to the total. Deliberately lighter than
+   .checkout__subtotal below, so the figure the customer is agreeing to stays the loudest. */
+.checkout__row {
+  display: flex;
+  justify-content: space-between;
+  padding: var(--space-1) 0;
+  font-size: 0.9375rem;
+  color: var(--text-muted);
+}
+
 .checkout__subtotal {
   display: flex;
   justify-content: space-between;

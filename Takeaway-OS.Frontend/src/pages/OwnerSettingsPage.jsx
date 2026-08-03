@@ -7,6 +7,7 @@ import {
   deleteWindow,
   setClosure,
 } from '../api/openingHours.js';
+import { getSettings, updateSettings } from '../api/settings.js';
 import { groupByDay, toTimeInput, fromTimeInput, describeWindow } from '../utils/hours.js';
 import OwnerNav from '../components/OwnerNav.jsx';
 import './OwnerSettingsPage.css';
@@ -14,6 +15,7 @@ import './OwnerSettingsPage.css';
 export default function OwnerSettingsPage() {
   const [schedule, setSchedule] = useState([]);
   const [status, setStatus] = useState(null);
+  const [deliveryFee, setDeliveryFee] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -21,10 +23,15 @@ export default function OwnerSettingsPage() {
     let active = true;
     (async () => {
       try {
-        const [windows, currentStatus] = await Promise.all([getSchedule(), getRestaurantStatus()]);
+        const [windows, currentStatus, settings] = await Promise.all([
+          getSchedule(),
+          getRestaurantStatus(),
+          getSettings(),
+        ]);
         if (!active) return;
         setSchedule(windows);
         setStatus(currentStatus);
+        setDeliveryFee(settings.deliveryFee);
       } catch (err) {
         if (active) setError(err.message);
       } finally {
@@ -66,6 +73,12 @@ export default function OwnerSettingsPage() {
         // rather than recomputing open/closed in the browser.
         onRefreshStatus={() => getRestaurantStatus().then(setStatus).catch(() => {})}
       />
+
+      {/* Guarded because the card seeds its input from this number, and null would render an
+          uncontrolled input that React then complains about the moment it gets a value. */}
+      {deliveryFee !== null && (
+        <DeliveryFeeCard fee={deliveryFee} onFeeChange={setDeliveryFee} />
+      )}
     </div>
   );
 }
@@ -150,6 +163,92 @@ function ClosureCard({ status, onStatusChange }) {
           </button>
         )}
       </div>
+    </section>
+  );
+}
+
+function DeliveryFeeCard({ fee, onFeeChange }) {
+  // A STRING, not a number, for the reason MenuItemForm's price field is: an <input> hands back
+  // "" while the box is empty, and Number('') is 0, so numeric state would turn a half-cleared
+  // box into free delivery. toFixed(2) because 2.5 from JSON should read as "2.50" in a price box.
+  const [value, setValue] = useState(fee.toFixed(2));
+  const [busy, setBusy] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState(null);
+
+  const parsed = Number(value);
+  const isValid = value.trim() !== '' && Number.isFinite(parsed) && parsed >= 0 && parsed <= 100;
+  const dirty = isValid && parsed !== fee;
+
+  async function handleSave(event) {
+    event.preventDefault();
+    if (!dirty) return;
+
+    setBusy(true);
+    setError(null);
+    try {
+      // Returns the saved settings, so the box is re-seeded from the server's value rather than
+      // from what was typed. "2.5" typed in comes back as "2.50".
+      const next = await updateSettings({ deliveryFee: parsed });
+      onFeeChange(next.deliveryFee);
+      setValue(next.deliveryFee.toFixed(2));
+      setSaved(true);
+    } catch (err) {
+      // 400 carries the Range message from RestaurantSettingsUpdateDto, worth showing verbatim.
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section className="settings__card">
+      <h2 className="settings__card-title">Delivery fee</h2>
+      <p className="settings__hint">
+        Charged once per order, on delivery orders only. Changing it affects new orders only -
+        orders already placed keep the fee they were charged.
+      </p>
+
+      {error && (
+        <p className="settings__error" role="alert">
+          {error}
+        </p>
+      )}
+
+      <form className="fee__controls" onSubmit={handleSave}>
+        <label className="fee__field">
+          <span className="settings__label">Fee</span>
+          <div className="fee__input-wrap">
+            <span className="fee__prefix" aria-hidden="true">
+              &pound;
+            </span>
+            <input
+              className="settings__input fee__input"
+              // type="number" gives a numeric keypad on mobile and the browser's own stepper.
+              // It does NOT stop a bad value reaching us, hence isValid above and Range on the DTO.
+              type="number"
+              inputMode="decimal"
+              min="0"
+              max="100"
+              step="0.01"
+              value={value}
+              onChange={(e) => {
+                setValue(e.target.value);
+                setSaved(false); // a fresh edit must not sit under a stale "Saved"
+              }}
+              disabled={busy}
+              aria-label="Delivery fee in pounds"
+            />
+          </div>
+        </label>
+
+        <button type="submit" className="settings__primary" disabled={!dirty || busy}>
+          {busy ? 'Saving...' : 'Save'}
+        </button>
+
+        {/* The only feedback available: nothing else on this page changes when the fee is saved. */}
+        {saved && !dirty && <span className="fee__saved">Saved</span>}
+      </form>
     </section>
   );
 }

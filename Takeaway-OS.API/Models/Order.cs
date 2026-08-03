@@ -34,6 +34,16 @@ public class Order
     public Guid PublicToken { get; set; } = Guid.NewGuid();
 
     public OrderType OrderType { get; set; }
+
+    // SNAPSHOT of RestaurantSettings.DeliveryFee at the moment this order was created,
+    // same principle as OrderItem.UnitPrice: the owner raising the fee later must not
+    // silently rewrite what this order cost.
+    //
+    // 0 on every Collection order, which is what lets ComputeTotal add this
+    // unconditionally with no OrderType branch. Non-nullable: pre-existing orders
+    // genuinely were charged nothing for delivery, so the migration's 0 default is
+    // accurate history rather than a placeholder (contrast StripePaymentIntentId).
+    public decimal DeliveryFee { get; set; }
     public OrderStatus Status { get; set; } = OrderStatus.Pending;
     public string Notes { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
