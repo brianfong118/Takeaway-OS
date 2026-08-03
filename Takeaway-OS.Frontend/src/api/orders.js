@@ -36,7 +36,8 @@ function toOrderItemDto(line) {
 }
 
 // POST /api/orders
-// Body: OrderCreateDto { customerName, customerPhone, deliveryAddress, addressId, orderType, notes, items[] }
+// Body: OrderCreateDto { customerName, customerPhone, deliveryAddress, deliveryPostcode,
+//                       addressId, orderType, notes, items[] }
 // Returns: OrderCreateResponseDto { order, clientSecret }
 //
 // auth: true (the default) on purpose even though the endpoint is [AllowAnonymous]:
@@ -45,11 +46,12 @@ function toOrderItemDto(line) {
 //
 // No total is sent. The server computes it from current menu prices — sending one would
 // be asking the client to name its own price.
-export function createOrder({ customerName, customerPhone, deliveryAddress, addressId, orderType, notes, lines }) {
+export function createOrder({ customerName, customerPhone, deliveryAddress, deliveryPostcode, addressId, orderType, notes, lines }) {
   return api.post('/api/orders', {
     customerName,
     customerPhone,
     deliveryAddress,
+    deliveryPostcode,
     addressId,
     orderType,
     notes,

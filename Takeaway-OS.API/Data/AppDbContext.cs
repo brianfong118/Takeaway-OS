@@ -25,6 +25,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<int>
     public DbSet<Address> Addresses { get; set; }
     public DbSet<OpeningHours> OpeningHours { get; set; }
     public DbSet<RestaurantSettings> RestaurantSettings { get; set; }
+    public DbSet<DeliveryArea> DeliveryAreas { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -102,6 +103,17 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<int>
         modelBuilder.Entity<OpeningHours>()
             .Property(oh => oh.DayOfWeek)
             .HasConversion<string>();
+
+        // Unique, for the same two-jobs reason as Order.PublicToken above.
+        // Index: IsAllowedAsync filters on this column and nothing else, and it runs on the
+        //   hot path of every delivery order.
+        // Unique: the Owner adding "E1" twice is a real slip, and this makes the database
+        //   refuse it rather than relying on the service remembering to check first. It only
+        //   works because OutwardCode is normalised (uppercase, no spaces) before it is
+        //   stored - otherwise "e1" and "E1" would be two distinct rows to Postgres.
+        modelBuilder.Entity<DeliveryArea>()
+            .HasIndex(d => d.OutwardCode)
+            .IsUnique();
 
         // HasData seeds the single settings row as part of the migration itself
         // So a fresh database always "open" rather than empty table (service has to null-check on every order)

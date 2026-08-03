@@ -308,6 +308,66 @@
   align-self: center;
 }
 
+/* --- delivery area --- */
+
+/* Warning colouring, not the --danger used by .settings__error: an empty list is a legitimate
+   state the owner may have arrived at deliberately, so it isn't an error - but it stops all
+   delivery, so it must not read as neutral hint text either. */
+.areas__empty {
+  margin-bottom: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  font-size: 0.875rem;
+  color: var(--warning);
+  background: var(--warning-bg);
+  border: 1px solid var(--warning);
+  border-radius: var(--radius);
+}
+
+.areas__list {
+  list-style: none;
+  margin: 0 0 var(--space-3);
+  padding: 0;
+  /* Wraps onto as many rows as it needs: the district count is entirely the owner's choice,
+     so a long list should reflow rather than stretch the card. */
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.areas__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.areas__code {
+  font-weight: 600;
+  /* Tabular figures so E1 / E14 / EC1A line up instead of jittering by digit width. */
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+
+.areas__new {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-3);
+}
+
+.areas__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.areas__input {
+  width: 8rem; /* a 4-character field shouldn't stretch across the card like a text input */
+  text-transform: uppercase; /* matches the uppercasing the change handler already applies */
+}
+
 @media (max-width: 560px) {
   .schedule__day {
     grid-template-columns: 1fr; /* day name above its rows once the two-column split gets tight */
@@ -315,6 +375,11 @@
   }
 
   .closure__controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .areas__new {
     flex-direction: column;
     align-items: stretch;
   }

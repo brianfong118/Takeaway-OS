@@ -3,10 +3,12 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ORDER_TYPES, createOrder } from '../api/orders.js';
 import { getRestaurantStatus } from '../api/openingHours.js';
 import { getSettings } from '../api/settings.js';
+import { getDeliveryAreas } from '../api/deliveryAreas.js';
 import { useBasket } from '../hooks/useBasket.js';
 import { savePendingPayment } from '../utils/pendingPayment.js';
 import { formatPrice } from '../utils/format.js';
 import { lineTotal } from '../utils/basket.js';
+import { looksOutsideArea } from '../utils/postcode.js';
 import './CheckoutPage.css';
 
 // One object rather than five useState calls, so handleChange below can stay generic.
@@ -15,6 +17,7 @@ const EMPTY_FORM = {
   customerName: '',
   customerPhone: '',
   deliveryAddress: '',
+  deliveryPostcode: '',
   orderType: ORDER_TYPES.Collection,
   notes: '',
 };
@@ -26,6 +29,7 @@ export default function CheckoutPage() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [status, setStatus] = useState(null); // RestaurantStatusDto, or null while unknown
   const [deliveryFee, setDeliveryFee] = useState(null); // null = not known yet, NOT "free"
+  const [areas, setAreas] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
 
@@ -35,9 +39,10 @@ export default function CheckoutPage() {
     async function load() {
       // allSettled, not all: Promise.all rejects as soon as either request does, so one dead
       // endpoint would cost us BOTH answers. Here each is independently useful.
-      const [statusResult, feeResult] = await Promise.allSettled([
+      const [statusResult, feeResult, areasResult] = await Promise.allSettled([
         getRestaurantStatus(),
         getSettings(),
+        getDeliveryAreas(),
       ]);
 
       if (ignore) return;
@@ -51,6 +56,11 @@ export default function CheckoutPage() {
       // silently missing. Quoting a number lower than what Stripe then charges is the worse
       // outcome by far, so "no total" is the safer thing to render.
       if (feeResult.status === 'fulfilled') setDeliveryFee(feeResult.value.deliveryFee);
+
+      // Left as [] on failure, which silently drops the hint and the warning. Unlike the fee,
+      // this one costs nothing to lose: it is advisory, and the server still refuses an
+      // out-of-area order. Nothing here should block checkout on a failed courtesy fetch.
+      if (areasResult.status === 'fulfilled') setAreas(areasResult.value);
     }
 
     load();
@@ -86,6 +96,10 @@ export default function CheckoutPage() {
         // Blanked for collection so a half-typed address can't be filed against an order
         // nobody is delivering. The API's IValidatableObject only requires it for Delivery.
         deliveryAddress: isDelivery ? form.deliveryAddress.trim() : '',
+        // Blanked for collection on the same reasoning as the address. Sent raw rather than
+        // normalised here: the server normalises before checking, and it is the copy that
+        // decides, so tidying it in the browser first would only hide what was really typed.
+        deliveryPostcode: isDelivery ? form.deliveryPostcode.trim() : '',
         addressId: null, // saved addresses arrive with accounts; guest checkout always sends free text
         orderType: form.orderType,
         notes: form.notes.trim(),
@@ -144,6 +158,11 @@ export default function CheckoutPage() {
   // The fallback covers only the case where the API sends an empty message.
   const closedMessage =
     (error?.status === 409 ? error.message : status?.message) || 'We’re closed right now.';
+
+  // Advisory only. It deliberately does NOT feed the button's `disabled`, unlike isClosed above:
+  // a disabled button would make the server's own refusal unreachable through the UI, and the
+  // server is the thing that actually decides. The customer can always press on and be told.
+  const outsideArea = isDelivery && looksOutsideArea(form.deliveryPostcode, areas);
 
   return (
     <div className="checkout">
@@ -236,10 +255,47 @@ export default function CheckoutPage() {
               required
               maxLength={250}
               autoComplete="street-address"
-              placeholder="House number, street, postcode"
+              placeholder="House number, street, town"
               value={form.deliveryAddress}
               onChange={handleChange}
             />
+          </div>
+        )}
+
+        {/* Its own field rather than part of the address, because this is the value the
+            delivery-area check runs on. Removed from the tree for collection*/}
+        {isDelivery && (
+          <div className="checkout__field">
+            <label htmlFor="deliveryPostcode">Postcode</label>
+            <input
+              id="deliveryPostcode"
+              name="deliveryPostcode"
+              type="text"
+              required
+              maxLength={10} // mirrors [MaxLength(10)] on OrderCreateDto
+              autoComplete="postal-code"
+              placeholder="E1 6AN"
+              className="checkout__postcode"
+              value={form.deliveryPostcode}
+              onChange={handleChange}
+            />
+
+            {/* Rendered only when the list actually loaded, so a failed fetch shows nothing
+                rather than an empty "We deliver to:". */}
+            {areas.length > 0 && (
+              <p className="checkout__hint">
+                We deliver to {areas.map((a) => a.outwardCode).join(', ')}.
+              </p>
+            )}
+
+            {outsideArea && (
+              // aria-live rather than role="alert": this appears while the customer is still
+              // typing, and an alert would interrupt a screen reader mid-word on every keystroke.
+              <p className="checkout__warning" aria-live="polite">
+                We don’t currently deliver to that postcode. You can still place a collection
+                order.
+              </p>
+            )}
           </div>
         )}
 

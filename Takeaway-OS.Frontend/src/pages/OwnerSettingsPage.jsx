@@ -8,6 +8,7 @@ import {
   setClosure,
 } from '../api/openingHours.js';
 import { getSettings, updateSettings } from '../api/settings.js';
+import { getDeliveryAreas, createDeliveryArea, deleteDeliveryArea } from '../api/deliveryAreas.js';
 import { groupByDay, toTimeInput, fromTimeInput, describeWindow } from '../utils/hours.js';
 import OwnerNav from '../components/OwnerNav.jsx';
 import './OwnerSettingsPage.css';
@@ -16,6 +17,7 @@ export default function OwnerSettingsPage() {
   const [schedule, setSchedule] = useState([]);
   const [status, setStatus] = useState(null);
   const [deliveryFee, setDeliveryFee] = useState(null);
+  const [areas, setAreas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -23,15 +25,17 @@ export default function OwnerSettingsPage() {
     let active = true;
     (async () => {
       try {
-        const [windows, currentStatus, settings] = await Promise.all([
+        const [windows, currentStatus, settings, deliveryAreas] = await Promise.all([
           getSchedule(),
           getRestaurantStatus(),
           getSettings(),
+          getDeliveryAreas(),
         ]);
         if (!active) return;
         setSchedule(windows);
         setStatus(currentStatus);
         setDeliveryFee(settings.deliveryFee);
+        setAreas(deliveryAreas);
       } catch (err) {
         if (active) setError(err.message);
       } finally {
@@ -79,6 +83,10 @@ export default function OwnerSettingsPage() {
       {deliveryFee !== null && (
         <DeliveryFeeCard fee={deliveryFee} onFeeChange={setDeliveryFee} />
       )}
+
+      {/* No null guard needed, unlike the fee card: this one seeds its input from an empty
+          string, not from the fetched data, so an empty list is a valid thing to render. */}
+      <DeliveryAreaCard areas={areas} onAreasChange={setAreas} />
     </div>
   );
 }
@@ -250,6 +258,142 @@ function DeliveryFeeCard({ fee, onFeeChange }) {
         {saved && !dirty && <span className="fee__saved">Saved</span>}
       </form>
     </section>
+  );
+}
+
+function DeliveryAreaCard({ areas, onAreasChange }) {
+  const [value, setValue] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(null);
+
+  async function handleAdd(event) {
+    event.preventDefault();
+
+    const outwardCode = value.trim();
+    if (!outwardCode) return setError('Enter a postcode district.');
+
+    setBusy(true);
+    setError(null);
+    try {
+      // 201 returns the created row, and the server has NORMALISED it 
+      const created = await createDeliveryArea({ outwardCode });
+
+      // Re-sorted locally to match the server's alphabetical GET, rather than refetching the
+      // whole list for one row. Safe to .sort() (which mutates, unlike LINQ OrderBy) because
+      // the spread has already produced a brand-new array
+      onAreasChange([...areas, created].sort((a, b) => a.outwardCode.localeCompare(b.outwardCode)));
+      setValue('');
+    } catch (err) {
+      // 400 (not a district) and 409 (already listed) both carry a usable sentence from the
+      // controller, so neither needs rewording here.
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section className="settings__card">
+      <h2 className="settings__card-title">Delivery area</h2>
+      <p className="settings__hint">
+        Enter the <strong>district</strong> only &mdash; the part before the space, like E1 or
+        SW1A. A delivery order is refused unless its postcode is in one of these districts.
+        Districts are exact: listing E1 does <strong>not</strong> include E14.
+      </p>
+
+      {areas.length === 0 && (
+        <p className="areas__empty" role="alert">
+          No districts listed, so <strong>every delivery order is currently refused</strong>. Add
+          at least one district to start taking deliveries. Collection orders are unaffected.
+        </p>
+      )}
+
+      {error && (
+        <p className="settings__error" role="alert">
+          {error}
+        </p>
+      )}
+
+      {areas.length > 0 && (
+        <ul className="areas__list">
+          {areas.map((area) => (
+            <AreaRow
+              key={area.id}
+              area={area}
+              onDeleted={() => onAreasChange(areas.filter((a) => a.id !== area.id))}
+            />
+          ))}
+        </ul>
+      )}
+
+      <form className="areas__new" onSubmit={handleAdd}>
+        <label className="areas__field">
+          <span className="settings__label">Add a district</span>
+          <input
+            className="settings__input areas__input"
+            value={value}
+            // Uppercased as it is typed, purely so the box matches what will be stored. The
+            // server normalises regardless, so this is cosmetic, not the validation.
+            onChange={(e) => {
+              setValue(e.target.value.toUpperCase());
+              setError(null);
+            }}
+            placeholder="E1"
+            maxLength={8}
+            disabled={busy}
+          />
+        </label>
+
+        <button type="submit" className="settings__add" disabled={busy || value.trim() === ''}>
+          {busy ? 'Adding...' : 'Add'}
+        </button>
+      </form>
+    </section>
+  );
+}
+
+function AreaRow({ area, onDeleted }) {
+  const [busy, setBusy] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+  const [error, setError] = useState(null);
+
+  async function handleDelete() {
+    // Two-step, matching WindowRow. Worth it here despite a district being trivial to re-add,
+    // because deleting the last one silently stops the shop taking any delivery order at all.
+    if (!confirming) return setConfirming(true);
+    setConfirming(false);
+    setBusy(true);
+    setError(null);
+    try {
+      await deleteDeliveryArea(area.id);
+      onDeleted();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <li className="areas__row">
+      <span className="areas__code">{area.outwardCode}</span>
+
+      <button
+        type="button"
+        className={`settings__delete ${confirming ? 'settings__delete--confirming' : ''}`}
+        disabled={busy}
+        onClick={handleDelete}
+        aria-label={`Remove ${area.outwardCode} from the delivery area`}
+      >
+        {confirming ? 'Confirm' : 'Remove'}
+      </button>
+
+      {error && (
+        <p className="window-row__error" role="alert">
+          {error}
+        </p>
+      )}
+    </li>
   );
 }
 

@@ -11,17 +11,20 @@ public class OrderService : IOrderService
     private readonly IBusinessHoursService _businessHoursService;
     private readonly IStripeService _stripeService;
     private readonly IRestaurantSettingsService _settingsService;
+    private readonly IDeliveryAreaService _deliveryAreaService;
 
     public OrderService(
         AppDbContext context,
         IBusinessHoursService businessHoursService,
         IStripeService stripeService,
-        IRestaurantSettingsService settingsService)
+        IRestaurantSettingsService settingsService,
+        IDeliveryAreaService deliveryAreaService)
     {
         _context = context;
         _businessHoursService = businessHoursService;
         _stripeService = stripeService;
         _settingsService = settingsService;
+        _deliveryAreaService = deliveryAreaService;
     }
 
     public async Task<List<OrderDto>> GetAllAsync()
@@ -157,8 +160,9 @@ public class OrderService : IOrderService
 
         // Default: whatever free text the request carried (guests, and customers who typed a one-off address).
         var deliveryAddress = dto.DeliveryAddress;
+        var deliveryPostcode = dto.DeliveryPostcode;
 
-        // A customer picked one of their saved addresses instead of retyping it -> SNAPSHOT 
+        // A customer picked one of their saved addresses instead of retyping it -> SNAPSHOT
         if (dto.AddressId is not null)
         {
             if (customerId is null)
@@ -172,6 +176,35 @@ public class OrderService : IOrderService
                 return new OrderCreateResult { Error = $"Address {dto.AddressId} does not exist." };
 
             deliveryAddress = FormatAddress(address);
+
+            // The saved address's OWN postcode wins over anything the request sent. Same
+            // reasoning as CustomerId coming from the JWT: when a trusted server-side record
+            // exists, the client's copy of it is not consulted.
+            deliveryPostcode = address.Postcode;
+        }
+
+        // DELIVERY RADIUS. 
+        // Placed here, before the fee snapshot and long before the Stripe call, so a refused
+        // order never creates a PaymentIntent it would then have to abandon.
+        var formattedPostcode = string.Empty;
+        if (dto.OrderType == OrderType.Delivery)
+        {
+            // Unparseable is a REFUSAL, not a pass. 
+            // If it can't be parsed the radius check can't run, and
+            // "couldn't check" must not silently become "allowed".
+            if (!UkPostcode.TryParse(deliveryPostcode, out var outwardCode, out formattedPostcode))
+                return new OrderCreateResult { Error = $"'{deliveryPostcode}' is not a valid UK postcode." };
+
+            // A plain 400 via Error, NOT the 409 the closed shop uses.
+            if (!await _deliveryAreaService.IsOutwardCodeAllowedAsync(outwardCode))
+                return new OrderCreateResult
+                {
+                    Error = $"Sorry, we don't deliver to {outwardCode}. You're welcome to place a collection order instead."
+                };
+
+            // Free-text address only: FormatAddress already put the postcode on the end for a saved address
+            if (dto.AddressId is null)
+                deliveryAddress = $"{deliveryAddress}, {formattedPostcode}";
         }
 
         // SNAPSHOT the fee that applies right now, exactly like OrderItem.UnitPrice below
@@ -184,6 +217,7 @@ public class OrderService : IOrderService
             CustomerName = dto.CustomerName,
             CustomerPhone = dto.CustomerPhone,
             DeliveryAddress = deliveryAddress,
+            DeliveryPostcode = formattedPostcode, // "" on collection, by the branch above
             DeliveryFee = deliveryFee,
             CustomerId = customerId, // null = guest; never read from dto, only from the validated JWT
             OrderType = dto.OrderType,
@@ -371,6 +405,7 @@ public class OrderService : IOrderService
             CustomerName = order.CustomerName,
             CustomerPhone = order.CustomerPhone,
             DeliveryAddress = order.DeliveryAddress,
+            DeliveryPostcode = order.DeliveryPostcode, // the snapshot, like DeliveryFee below
             OrderType = order.OrderType,
             Status = order.Status,
             Notes = order.Notes,

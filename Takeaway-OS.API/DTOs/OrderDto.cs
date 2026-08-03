@@ -9,6 +9,12 @@ public class OrderDto  // shape returned by GET requests
     public string CustomerName { get; set; } = string.Empty;
     public string CustomerPhone { get; set; } = string.Empty;
     public string DeliveryAddress { get; set; } = string.Empty;
+
+    // The normalised postcode the radius check actually passed on ("E1 6AN")
+    // NOT added to GuestOrderDto: the guest's own address line already shows it, and that
+    // DTO stays as narrow as the confirmation page allows.
+    public string DeliveryPostcode { get; set; } = string.Empty;
+
     public OrderType OrderType { get; set; }
     public OrderStatus Status { get; set; }
     public string Notes { get; set; } = string.Empty;
@@ -49,6 +55,9 @@ public class OrderCreateDto : IValidatableObject  // shape accepted by POST /api
     [MaxLength(250)]
     public string DeliveryAddress { get; set; } = string.Empty;
 
+    [MaxLength(10)]
+    public string DeliveryPostcode { get; set; } = string.Empty;
+
     public int? AddressId { get; set; }
 
     public OrderType OrderType { get; set; }
@@ -78,6 +87,15 @@ public class OrderCreateDto : IValidatableObject  // shape accepted by POST /api
             yield return new ValidationResult(
                 "Delivery orders require a delivery address — select a saved address or enter one.",
                 new[] { nameof(DeliveryAddress) });
+        }
+
+        if (OrderType == OrderType.Delivery
+            && AddressId is null
+            && string.IsNullOrWhiteSpace(DeliveryPostcode))
+        {
+            yield return new ValidationResult(
+                "Delivery orders require a postcode.",
+                new[] { nameof(DeliveryPostcode) });
         }
     }
 }

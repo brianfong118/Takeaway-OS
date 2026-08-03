@@ -50,6 +50,34 @@
   color: var(--danger);
 }
 
+/* A postcode is short and fixed-width; letting it stretch the full form width invites the
+   customer to type the whole address into it. */
+.checkout__postcode {
+  max-width: 10rem;
+  text-transform: uppercase;
+}
+
+/* Plain muted text, deliberately not a coloured box: this is background information the
+   customer reads once, and boxing it would compete with the real messages above. */
+.checkout__hint {
+  margin: var(--space-2) 0 0;
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+}
+
+/* Same warning palette as the closed banner, and for the same reason: an out-of-area postcode
+   is not a typo the customer got wrong, it is a limit of the shop. Sized down and left
+   unboxed-looking relative to the banner because it sits inside a field, not above the form. */
+.checkout__warning {
+  margin: var(--space-2) 0 0;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--warning);
+  border-radius: var(--radius);
+  background: var(--warning-bg);
+  color: var(--warning);
+  font-size: 0.875rem;
+}
+
 /* Flex column rather than margins on each child: one gap value spaces every field equally,
    including ones that appear and disappear (the delivery address). */
 .checkout__form {

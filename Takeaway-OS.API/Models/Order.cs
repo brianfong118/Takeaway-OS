@@ -10,6 +10,10 @@ public class Order
     public string CustomerPhone { get; set; } = string.Empty;
     public string DeliveryAddress { get; set; } = string.Empty;
 
+    // Snapshotted rather than re-derived on read for the usual reason: the Owner narrowing
+    // the delivery area next month must not retroactively make a delivered order look invalid.
+    public string DeliveryPostcode { get; set; } = string.Empty;
+
     // Nullable on purpose -> null means guest checkout, which stays the default path.
     // Populated only when the caller presents a JWT belonging to a Customer profile.
     public int? CustomerId { get; set; }

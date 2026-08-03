@@ -82,7 +82,8 @@ async function request(path, { method = 'GET', body, auth = true } = {}) {
   if (response.status === 204) return null; 
 
   const contentType = response.headers.get('content-type') ?? '';
-  const data = contentType.includes('application/json')
+ 
+  const data = contentType.includes('json')
     ? await response.json()
     : await response.text();
 

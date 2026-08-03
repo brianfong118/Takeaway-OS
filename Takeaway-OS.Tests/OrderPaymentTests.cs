@@ -20,7 +20,7 @@ public class OrderPaymentTests
             .Options;
 
         var context = new AppDbContext(options);
-        var service = new OrderService(context, null!, null!, null!);
+        var service = new OrderService(context, null!, null!, null!, null!);
         return (service, context);
     }
 
