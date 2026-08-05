@@ -1,0 +1,121 @@
+/* Layered on AccountPage.css, same as AddressesPage: `account` is the shell, `history` is only
+   what this list adds. */
+
+.history__empty {
+  margin-bottom: var(--space-4);
+  color: var(--text-muted);
+}
+
+.history__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  list-style: none;
+  padding: 0;
+}
+
+.history__item {
+  padding: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.history__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.history__id {
+  font-weight: 600;
+}
+
+.history__placed {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.history__status {
+  padding: 0.125rem var(--space-2);
+  border-radius: var(--radius);
+  font-size: 0.8rem;
+  font-weight: 600;
+  /* The status text is short but "Out for delivery" would wrap onto two lines and shove the
+     card's header taller; it gets a line of its own instead. */
+  white-space: nowrap;
+}
+
+.history__status--active {
+  background: var(--brand);
+  color: var(--text-inverse);
+}
+
+/* Terminal states are muted rather than coloured: a finished order is history, and colouring it
+   would make a list of past orders compete for attention with nothing to act on. */
+.history__status--done {
+  background: var(--border);
+  color: var(--text-muted);
+}
+
+.history__status--cancelled {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
+.history__lines {
+  list-style: none;
+  padding: 0;
+  margin-bottom: var(--space-3);
+}
+
+.history__line {
+  font-size: 0.9rem;
+}
+
+/* Its own line, indented, so a long modifier list cannot be mistaken for another item. */
+.history__mods {
+  display: block;
+  padding-left: var(--space-3);
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.history__foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border);
+}
+
+.history__type {
+  /* min-width: 0 so a long delivery address ellipsises instead of pushing the total off. */
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.history__total {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.history__fee {
+  margin-top: var(--space-2);
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  text-align: right;
+}
+
+.history__note {
+  margin-top: var(--space-4);
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}

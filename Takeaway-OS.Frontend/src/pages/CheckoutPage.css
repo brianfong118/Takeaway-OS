@@ -30,6 +30,31 @@
   margin-bottom: var(--space-4);
 }
 
+/* Muted and unboxed on purpose. A bordered panel here would read as something that has to be
+   dealt with before ordering, which is the exact opposite of what guest checkout promises. */
+.checkout__account {
+  margin-bottom: var(--space-4);
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+/* The saved-address picker. Matched to the text inputs rather than left as the browser's
+   default control, which renders at a smaller font and would look like a lesser field. */
+.checkout__field select {
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 1rem;
+}
+
+.checkout__field select:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 1px;
+}
+
 /* Warning, not danger: the shop being shut is not the customer's mistake and nothing they
    typed is wrong , the red error styling below would misattribute blame. */
 .checkout__banner {

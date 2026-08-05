@@ -66,6 +66,18 @@ export default function Layout() {
                   </NavLink>
                 </li>
               )}
+              {/* Joins Menu and Basket rather than replacing them, which is the opposite of
+                  what the staff links do above: a customer is here to order, and the account
+                  is a place they visit occasionally, not their reason for being on the site.
+                  Three links plus the account block is the widest this bar ever gets.
+                  No `end`, so it stays lit across every /account/* section. */}
+              {user?.role === ROLES.Customer && (
+                <li>
+                  <NavLink to="/account" className={linkClass}>
+                    Account
+                  </NavLink>
+                </li>
+              )}
               {user?.role === ROLES.Driver && (
                 <li>
                   <NavLink to="/driver" className={linkClass}>

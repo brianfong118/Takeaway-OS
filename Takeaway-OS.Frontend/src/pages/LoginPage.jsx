@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth.js';
 import { landingFor } from '../utils/routes.js';
-import './LoginPage.css';
+import './AuthPage.css'; // shared with RegisterPage -> the `auth` block, not a `login` one
 
 const EMPTY_FORM = { email: '', password: '' };
 
@@ -56,13 +56,13 @@ export default function LoginPage() {
     error?.status === 401 ? 'That email and password combination is not recognised.' : error?.message;
 
   return (
-    <div className="login">
-      <h1 className="login__title">Sign in</h1>
+    <div className="auth">
+      <h1 className="auth__title">Sign in</h1>
 
-      {error && <p className="login__error" role="alert">{message}</p>}
+      {error && <p className="auth__error" role="alert">{message}</p>}
 
-      <form className="login__form" onSubmit={handleSubmit}>
-        <div className="login__field">
+      <form className="auth__form" onSubmit={handleSubmit}>
+        <div className="auth__field">
           <label htmlFor="email">Email</label>
           <input
             id="email"
@@ -76,7 +76,7 @@ export default function LoginPage() {
           />
         </div>
 
-        <div className="login__field">
+        <div className="auth__field">
           <label htmlFor="password">Password</label>
           <input
             id="password"
@@ -91,12 +91,17 @@ export default function LoginPage() {
           />
         </div>
 
-        <button type="submit" className="login__submit" disabled={isSubmitting}>
+        <button type="submit" className="auth__submit" disabled={isSubmitting}>
           {isSubmitting ? 'Signing in...' : 'Sign in'}
         </button>
       </form>
 
-      <p className="login__note">
+      {/* Sign-up sits under sign-in rather than beside it: Owner and Driver reach this page too,
+          and for them there is no account to create - this link is only ever for a customer. */}
+      <p className="auth__note">
+        New here? <Link to="/register">Create an account</Link>.
+      </p>
+      <p className="auth__note">
         Ordering does not need an account. <Link to="/">Browse the menu</Link> and check out as a guest.
       </p>
     </div>

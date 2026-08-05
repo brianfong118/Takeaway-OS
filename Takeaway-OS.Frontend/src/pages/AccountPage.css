@@ -1,0 +1,109 @@
+/* Shared by all three account pages (profile, addresses, orders) - the `account` block is the
+   page shell, and each page adds its own block for what sits inside. Wider than the auth forms'
+   420px because the addresses and orders pages hold cards, not a single column of short fields. */
+.account {
+  max-width: 720px;
+  margin-inline: auto;
+  padding: var(--space-5) 0;
+}
+
+.account__title {
+  margin-bottom: var(--space-4);
+}
+
+.account__status {
+  color: var(--text-muted);
+}
+
+.account__error {
+  margin-bottom: var(--space-4);
+  padding: var(--space-3);
+  border: 1px solid var(--danger);
+  border-radius: var(--radius);
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
+.account__form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  /* Held to the narrower measure the auth forms use: a row of short inputs stretched to 720px
+     reads badly, but the page shell still needs the width for the other two sections. */
+  max-width: 420px;
+}
+
+.account__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/* label for a real control, span for the read-only email line. Same weight, so the email does
+   not look like a lesser field than the two above it. */
+.account__field label,
+.account__label {
+  font-weight: 600;
+}
+
+.account__field input {
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  font-family: inherit;
+  font-size: 1rem;
+}
+
+.account__field input:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 1px;
+}
+
+.account__field input:user-invalid {
+  border-color: var(--danger);
+}
+
+/* Plain text at the input's own font size, so the value reads as a value - but with no border
+   or background, so it does not look like a box that has been switched off. */
+.account__readonly {
+  font-size: 1rem;
+}
+
+.account__hint {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.account__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.account__submit {
+  padding: var(--space-3) var(--space-4);
+  border: none;
+  border-radius: var(--radius);
+  background: var(--brand);
+  color: var(--text-inverse);
+  font-family: inherit;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.account__submit:hover:not(:disabled) {
+  background: var(--brand-dark);
+}
+
+.account__submit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.account__saved {
+  color: var(--success, var(--brand));
+  font-size: 0.9rem;
+  font-weight: 600;
+}

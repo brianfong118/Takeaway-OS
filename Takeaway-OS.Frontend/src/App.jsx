@@ -7,6 +7,10 @@ import CheckoutPage from './pages/CheckoutPage.jsx';
 import PaymentPage from './pages/PaymentPage.jsx';
 import OrderConfirmationPage from './pages/OrderConfirmationPage.jsx';
 import LoginPage from './pages/LoginPage.jsx';
+import RegisterPage from './pages/RegisterPage.jsx';
+import AccountPage from './pages/AccountPage.jsx';
+import AddressesPage from './pages/AddressesPage.jsx';
+import OrderHistoryPage from './pages/OrderHistoryPage.jsx';
 import OwnerDashboardPage from './pages/OwnerDashboardPage.jsx';
 import OwnerMenuPage from './pages/OwnerMenuPage.jsx';
 import OwnerSettingsPage from './pages/OwnerSettingsPage.jsx';
@@ -43,6 +47,12 @@ export default function App() {
             who hits a guarded URL logged-out to this path, with where they came from attached. */}
         <Route path="login" element={<LoginPage />} />
 
+        {/* Its own URL rather than a tab on /login: password managers key their sign-in vs
+            sign-up behaviour off the page, and a bookmark or a shared link should land on the
+            form it names. Customer accounts only : Owner and Driver logins are created
+            elsewhere (the first Owner by the self-closing bootstrap, Drivers by an Owner). */}
+        <Route path="register" element={<RegisterPage />} />
+
         {/* Another pathless layout route, this one contributing a guard instead of chrome.
             Children render through ProtectedRoute's <Outlet />, so one wrapper covers all of
             them. UI-only: every endpoint these pages call is [Authorize]d server-side too. */}
@@ -53,6 +63,15 @@ export default function App() {
           <Route path="owner" element={<OwnerDashboardPage />} />
           <Route path="owner/menu" element={<OwnerMenuPage />} />
           <Route path="owner/settings" element={<OwnerSettingsPage />} />
+        </Route>
+
+        {/* The customer's own area. Guarded by role like the owner and driver sections, but
+            note what that guard is NOT for: ordering never needs an account, so nothing behind
+            here is on the path to placing an order. It is only the extras an account adds. */}
+        <Route element={<ProtectedRoute roles={[ROLES.Customer]} />}>
+          <Route path="account" element={<AccountPage />} />
+          <Route path="account/addresses" element={<AddressesPage />} />
+          <Route path="account/orders" element={<OrderHistoryPage />} />
         </Route>
 
         <Route element={<ProtectedRoute roles={[ROLES.Driver]} />}>

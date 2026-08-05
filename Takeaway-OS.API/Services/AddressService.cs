@@ -44,10 +44,16 @@ public class AddressService : IAddressService
         return addresses.Select(MapToDto).ToList();
     }
 
-    public async Task<AddressDto?> CreateAsync(AddressCreateDto dto, int applicationUserId)
+    public async Task<AddressWriteResult> CreateAsync(AddressCreateDto dto, int applicationUserId)
     {
+        // Postcode first, before any database work: a malformed one fails the whole write, so
+        // there is no point resolving the customer or reading their existing addresses for a
+        // request that cannot succeed.
+        if (!UkPostcode.TryParse(dto.Postcode, out _, out var formattedPostcode))
+            return new AddressWriteResult { Outcome = AddressWriteOutcome.InvalidPostcode };
+
         var customerId = await ResolveCustomerIdAsync(applicationUserId);
-        if (customerId is null) return null;
+        if (customerId is null) return new AddressWriteResult { Outcome = AddressWriteOutcome.NoCustomerProfile };
 
         var isFirstAddress = !await _context.Addresses.AnyAsync(a => a.CustomerId == customerId);
 
@@ -62,7 +68,7 @@ public class AddressService : IAddressService
             Line1 = dto.Line1,
             Line2 = dto.Line2,
             City = dto.City,
-            Postcode = dto.Postcode,
+            Postcode = formattedPostcode,
             IsDefault = shouldBeDefault,
             CustomerId = customerId.Value // from the JWT, never from the request body
         };
@@ -70,26 +76,33 @@ public class AddressService : IAddressService
         _context.Addresses.Add(address);
         await _context.SaveChangesAsync(); // one call - the demotion above and this insert commit together
 
-        return MapToDto(address);
+        return new AddressWriteResult
+        {
+            Outcome = AddressWriteOutcome.Success,
+            Address = MapToDto(address)
+        };
     }
 
-    public async Task<AddressDto?> UpdateAsync(int id, AddressUpdateDto dto, int applicationUserId)
+    public async Task<AddressWriteResult> UpdateAsync(int id, AddressUpdateDto dto, int applicationUserId)
     {
+        if (!UkPostcode.TryParse(dto.Postcode, out _, out var formattedPostcode))
+            return new AddressWriteResult { Outcome = AddressWriteOutcome.InvalidPostcode };
+
         var customerId = await ResolveCustomerIdAsync(applicationUserId);
-        if (customerId is null) return null;
+        if (customerId is null) return new AddressWriteResult { Outcome = AddressWriteOutcome.NotFound };
 
         // Ownership is in the WHERE, not an if-check afterwards: someone else's address is
         // indistinguishable from one that doesn't exist, so the controller's 404 leaks nothing.
         var address = await _context.Addresses
             .FirstOrDefaultAsync(a => a.Id == id && a.CustomerId == customerId);
 
-        if (address is null) return null;
+        if (address is null) return new AddressWriteResult { Outcome = AddressWriteOutcome.NotFound };
 
         address.Label = dto.Label;
         address.Line1 = dto.Line1;
         address.Line2 = dto.Line2;
         address.City = dto.City;
-        address.Postcode = dto.Postcode;
+        address.Postcode = formattedPostcode; // canonical form, exactly as in CreateAsync
 
         // Promotion only. Sending IsDefault=false at the current default is ignored 
         if (dto.IsDefault && !address.IsDefault)
@@ -99,7 +112,11 @@ public class AddressService : IAddressService
         }
 
         await _context.SaveChangesAsync();
-        return MapToDto(address);
+        return new AddressWriteResult
+        {
+            Outcome = AddressWriteOutcome.Success,
+            Address = MapToDto(address)
+        };
     }
 
     public async Task<bool> DeleteAsync(int id, int applicationUserId)

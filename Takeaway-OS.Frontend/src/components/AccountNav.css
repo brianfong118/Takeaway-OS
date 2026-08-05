@@ -1,0 +1,31 @@
+/* Visually the same underlined-tab strip as OwnerNav, so the app has one idea of what a section
+   switcher looks like, but written separately - see the note in AccountNav.jsx. No `inline`
+   variant here: nothing on the account pages is fighting for vertical space. */
+.account-nav {
+  display: flex;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+  border-bottom: 1px solid var(--border);
+}
+
+.account-nav__link {
+  padding: var(--space-2) 0;
+  /* Pulls the link's own underline down onto the container's rule, so the active tab replaces
+     that 1px line rather than sitting above it. */
+  margin-bottom: -1px;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-decoration: none;
+  /* Reserved transparent, so activating a tab doesn't shift the row by 2px. */
+  border-bottom: 2px solid transparent;
+}
+
+.account-nav__link:hover {
+  color: var(--text);
+}
+
+.account-nav__link--active {
+  color: var(--brand);
+  border-bottom-color: var(--brand);
+}

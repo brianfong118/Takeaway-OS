@@ -67,6 +67,15 @@ export function getOrderByToken(token) {
   return api.get(`/api/orders/by-token/${encodeURIComponent(token)}`, { auth: false });
 }
 
+// --- Customer-only ---
+
+// GET /api/orders/mine
+// Returns: OrderDto[] - the caller's own orders, newest first.
+// No customer id to pass: the server reads it off the JWT
+export function getMyOrders() {
+  return api.get('/api/orders/mine');
+}
+
 // --- Owner-only ---
 
 // GET /api/orders

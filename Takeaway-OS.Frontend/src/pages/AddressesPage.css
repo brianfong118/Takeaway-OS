@@ -1,0 +1,163 @@
+/* Sits on top of AccountPage.css, which this page also imports: `account` is the page shell and
+   the field/button styles, `addresses` is only what the list adds. Both are global stylesheets,
+   so the two imports simply both apply - the split is for reading, not for scoping. */
+
+.addresses__empty {
+  margin-bottom: var(--space-4);
+  color: var(--text-muted);
+}
+
+.addresses__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+  list-style: none;
+  padding: 0;
+}
+
+.addresses__item {
+  display: flex;
+  /* Wrap rather than shrink: on a phone the actions drop below the address instead of being
+     squeezed to unreadable widths beside it. */
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.addresses__body {
+  /* min-width: 0 lets this flex item shrink below its content width, without which a long
+     address line would push the actions off the card instead of wrapping. */
+  min-width: 0;
+  flex: 1;
+}
+
+.addresses__label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-weight: 600;
+}
+
+.addresses__badge {
+  padding: 0.125rem var(--space-2);
+  border-radius: var(--radius);
+  background: var(--brand);
+  color: var(--text-inverse);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.addresses__lines {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.addresses__warning {
+  margin-top: var(--space-2);
+  color: var(--warning, var(--danger));
+  font-size: 0.85rem;
+}
+
+.addresses__error {
+  margin-top: var(--space-2);
+  color: var(--danger);
+  font-size: 0.85rem;
+}
+
+.addresses__actions {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+/* Secondary to the page's one filled button (`account__submit`): these are the actions on a
+   card, and three filled buttons per row would compete with it for attention. */
+.addresses__action {
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.875rem;
+  cursor: pointer;
+  /* 44px is the minimum comfortable tap target on a touchscreen. */
+  min-height: 44px;
+}
+
+.addresses__action:hover:not(:disabled) {
+  border-color: var(--text-muted);
+}
+
+.addresses__action:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.addresses__action--danger {
+  color: var(--danger);
+}
+
+/* Step two of the two-step delete: the button fills in, so "Confirm" is visibly a different
+   act from the "Delete" that was just pressed rather than the same button relabelled. */
+.addresses__action--confirming {
+  border-color: var(--danger);
+  background: var(--danger);
+  color: var(--text-inverse);
+}
+
+.addresses__add {
+  padding: var(--space-3) var(--space-4);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  min-height: 44px;
+}
+
+.addresses__add:hover {
+  border-color: var(--brand);
+  color: var(--brand);
+}
+
+.address-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  max-width: 420px;
+  padding: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.address-form__title {
+  font-size: 1.125rem;
+}
+
+/* Postcodes are short and fixed-width in practice; a full-width box invites a whole address. */
+.address-form__postcode {
+  max-width: 12ch;
+  text-transform: uppercase;
+}
+
+.address-form__check {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  cursor: pointer;
+}
+
+.address-form__actions {
+  display: flex;
+  gap: var(--space-3);
+}

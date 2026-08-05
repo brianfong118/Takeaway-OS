@@ -4,6 +4,10 @@ import { ORDER_TYPES, createOrder } from '../api/orders.js';
 import { getRestaurantStatus } from '../api/openingHours.js';
 import { getSettings } from '../api/settings.js';
 import { getDeliveryAreas } from '../api/deliveryAreas.js';
+import { getMyProfile } from '../api/customers.js';
+import { getMyAddresses } from '../api/addresses.js';
+import { ROLES } from '../api/auth.js';
+import { useAuth } from '../hooks/useAuth.js';
 import { useBasket } from '../hooks/useBasket.js';
 import { savePendingPayment } from '../utils/pendingPayment.js';
 import { formatPrice } from '../utils/format.js';
@@ -24,6 +28,7 @@ const EMPTY_FORM = {
 
 export default function CheckoutPage() {
   const { lines, subtotal, clearBasket } = useBasket();
+  const { user } = useAuth();
   const navigate = useNavigate();
 
   const [form, setForm] = useState(EMPTY_FORM);
@@ -32,6 +37,17 @@ export default function CheckoutPage() {
   const [areas, setAreas] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
+
+  // The customer's saved addresses, and which one is picked. null = "type a new one", which is
+  // also what a guest is permanently on. Kept OUT of `form`: everything in there is a text box
+  // the customer fills in, whereas this is a choice between an id and free text, and mixing the
+  // two would mean the submit handler could not tell which of them to believe.
+  const [addresses, setAddresses] = useState([]);
+  const [selectedAddressId, setSelectedAddressId] = useState(null);
+
+  // only a Customer-role token can read /api/customers/me and /api/addresses, so this
+  // decides whether those two requests are worth making at all.
+  const isCustomer = user?.role === ROLES.Customer;
 
   useEffect(() => {
     let ignore = false; // flipped by the cleanup below, to drop a response arriving after unmount
@@ -70,6 +86,44 @@ export default function CheckoutPage() {
     };
   }, []); // empty dependency array -> runs once on mount; neither value depends on a prop
 
+  // A SECOND effect rather than more entries in the one above, because these two requests are
+  // conditional and the other three are not. Folding them in would have meant either building
+  // the array dynamically (and losing the positional destructuring that makes it readable) or
+  // firing two requests that can only 401 for a guest. Two effects both run on mount, so this
+  // costs nothing in speed - they are still in flight at the same time.
+  useEffect(() => {
+    if (!isCustomer) return; // a guest has nothing to prefill and no saved addresses
+
+    let ignore = false;
+
+    (async () => {
+      const [profileResult, addressResult] = await Promise.allSettled([
+        getMyProfile(),
+        getMyAddresses(),
+      ]);
+
+      if (ignore) return;
+
+      if (profileResult.status === 'fulfilled') {
+        // `current.customerName ||` - prefill only what is still EMPTY.
+        setForm((current) => ({
+          ...current,
+          customerName: current.customerName || profileResult.value.name,
+          customerPhone: current.customerPhone || profileResult.value.phone,
+        }));
+      }
+
+      if (addressResult.status === 'fulfilled') {
+        setAddresses(addressResult.value);
+        if (addressResult.value.length > 0) setSelectedAddressId(addressResult.value[0].id);
+      }
+    })();
+
+    return () => {
+      ignore = true;
+    };
+  }, [isCustomer]);
+
   // event.target is the DOM element that fired the change; its `name` matches a key in the form
   // object, so one handler serves every field instead of one closure per input.
   function handleChange(event) {
@@ -89,18 +143,21 @@ export default function CheckoutPage() {
 
     const isDelivery = form.orderType === ORDER_TYPES.Delivery;
 
+    // Exactly one of the two address sources is sent, never both
+    const usingSavedAddress = isDelivery && selectedAddressId !== null;
+
     try {
       const response = await createOrder({
         customerName: form.customerName.trim(),
         customerPhone: form.customerPhone.trim(),
         // Blanked for collection so a half-typed address can't be filed against an order
-        // nobody is delivering. The API's IValidatableObject only requires it for Delivery.
-        deliveryAddress: isDelivery ? form.deliveryAddress.trim() : '',
-        // Blanked for collection on the same reasoning as the address. Sent raw rather than
-        // normalised here: the server normalises before checking, and it is the copy that
-        // decides, so tidying it in the browser first would only hide what was really typed.
-        deliveryPostcode: isDelivery ? form.deliveryPostcode.trim() : '',
-        addressId: null, // saved addresses arrive with accounts; guest checkout always sends free text
+        // nobody is delivering. The API's IValidatableObject only requires it for Delivery,
+        // and accepts it from EITHER this field or addressId below.
+        deliveryAddress: isDelivery && !usingSavedAddress ? form.deliveryAddress.trim() : '',
+        // Blanked for collection on the same reasoning as the address.
+        deliveryPostcode: isDelivery && !usingSavedAddress ? form.deliveryPostcode.trim() : '',
+        // The saved address's OWN postcode is what the server will check the delivery area against
+        addressId: usingSavedAddress ? selectedAddressId : null,
         orderType: form.orderType,
         notes: form.notes.trim(),
         lines,
@@ -159,10 +216,19 @@ export default function CheckoutPage() {
   const closedMessage =
     (error?.status === 409 ? error.message : status?.message) || 'We’re closed right now.';
 
+  // Recomputed on every render rather than stored in state alongside the id: two pieces of
+  // state that must agree can disagree, and this one is derivable from the other.
+  const savedAddress = addresses.find((a) => a.id === selectedAddressId) ?? null;
+
+  // A saved address's postcode is already normalised by the server, and the typed one is whatever is in the box right now.
+  const postcodeToCheck = savedAddress ? savedAddress.postcode : form.deliveryPostcode;
+
   // Advisory only. It deliberately does NOT feed the button's `disabled`, unlike isClosed above:
   // a disabled button would make the server's own refusal unreachable through the UI, and the
   // server is the thing that actually decides. The customer can always press on and be told.
-  const outsideArea = isDelivery && looksOutsideArea(form.deliveryPostcode, areas);
+  const outsideArea = isDelivery && looksOutsideArea(postcodeToCheck, areas);
+
+  const showAddressPicker = isDelivery && addresses.length > 0;
 
   return (
     <div className="checkout">
@@ -178,6 +244,13 @@ export default function CheckoutPage() {
           409 is excluded so it isn't reported twice, in two different styles. */}
       {error && error.status !== 409 && (
         <p className="checkout__error" role="alert">{error.message}</p>
+      )}
+
+      {!user && (
+        <p className="checkout__account">
+          <Link to="/login">Sign in</Link> or <Link to="/register">create an account</Link> to
+          save your details for next time — or just carry on below as a guest.
+        </p>
       )}
 
       {/* onSubmit on the <form>, not onClick on the button, so the Enter key inside any field
@@ -242,10 +315,43 @@ export default function CheckoutPage() {
           />
         </div>
 
-        {/* Rendered only for delivery. Because it is removed from the tree entirely, its
-            `required` disappears with it , a collection order can't be blocked by a field
-            the customer cannot see. */}
-        {isDelivery && (
+        {/* Only for a signed-in customer with at least one saved address. Everyone else falls
+            straight through to the free-text fields below, unchanged. */}
+        {showAddressPicker && (
+          <div className="checkout__field">
+            <label htmlFor="savedAddress">Deliver to</label>
+            <select
+              id="savedAddress"
+              name="savedAddress"
+              // ?? '' because null would make this an UNCONTROLLED select, which React then
+              // refuses to keep in sync. '' is a real option here -> the "different address" one.
+              value={selectedAddressId ?? ''}
+              onChange={(event) => {
+                // e.target.value is ALWAYS a string, even for numeric option values, so the id
+                // has to go back through Number() before it can match an address's numeric id.
+                const { value } = event.target;
+                setSelectedAddressId(value === '' ? null : Number(value));
+              }}
+            >
+              {addresses.map((address) => (
+                <option key={address.id} value={address.id}>
+                  {/* Label first when they gave one*/}
+                  {address.label ? `${address.label} — ` : ''}
+                  {address.line1}, {address.postcode}
+                </option>
+              ))}
+              <option value="">Use a different address</option>
+            </select>
+
+            <p className="checkout__hint">
+              <Link to="/account/addresses">Manage your saved addresses</Link>
+            </p>
+          </div>
+        )}
+
+        {/* Rendered only for delivery, and only when a saved address ISN'T being used. Because
+            they are removed from the tree entirely, their `required` goes with them */}
+        {isDelivery && !savedAddress && (
           <div className="checkout__field">
             <label htmlFor="deliveryAddress">Delivery address</label>
             <textarea
@@ -264,7 +370,7 @@ export default function CheckoutPage() {
 
         {/* Its own field rather than part of the address, because this is the value the
             delivery-area check runs on. Removed from the tree for collection*/}
-        {isDelivery && (
+        {isDelivery && !savedAddress && (
           <div className="checkout__field">
             <label htmlFor="deliveryPostcode">Postcode</label>
             <input
@@ -287,16 +393,15 @@ export default function CheckoutPage() {
                 We deliver to {areas.map((a) => a.outwardCode).join(', ')}.
               </p>
             )}
-
-            {outsideArea && (
-              // aria-live rather than role="alert": this appears while the customer is still
-              // typing, and an alert would interrupt a screen reader mid-word on every keystroke.
-              <p className="checkout__warning" aria-live="polite">
-                We don’t currently deliver to that postcode. You can still place a collection
-                order.
-              </p>
-            )}
           </div>
+        )}
+
+        {outsideArea && (
+          // aria-live rather than role="alert": this appears while the customer is still
+          // typing, and an alert would interrupt a screen reader mid-word on every keystroke.
+          <p className="checkout__warning" aria-live="polite">
+            We don’t currently deliver to that postcode. You can still place a collection order.
+          </p>
         )}
 
         <div className="checkout__field">
