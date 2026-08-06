@@ -66,6 +66,13 @@ export default function MenuPage() {
     <div className="menu">
       <h1 className="menu__title">Menu</h1>
 
+      {/* Cross-contamination warning, required alongside the per-dish allergen text that lives in
+          each item's description*/}
+      <p className="menu__allergens">
+        All dishes are prepared in a kitchen that handles peanuts, tree nuts, gluten, shellfish,
+        sesame and soya, so we cannot guarantee any dish is free from traces of these.
+      </p>
+
       {sections.map(({ category, items: categoryItems }) => (
         <section key={category.id} className="menu__section">
           <h2 className="menu__category">{category.name}</h2>

@@ -2,6 +2,7 @@ import { Link, NavLink, Outlet } from 'react-router-dom';
 import { useBasket } from '../hooks/useBasket.js';
 import { useAuth } from '../hooks/useAuth.js';
 import { ROLES } from '../api/auth.js';
+import { BUSINESS, formatAddressInline } from '../config/business.js';
 import './Layout.css';
 
 // Shared chrome for every customer-facing page. Rendered by the layout route in App.jsx,
@@ -111,8 +112,36 @@ export default function Layout() {
         <Outlet /> {/* the matched child route renders here */}
       </main>
 
+      {/* The footer carries the business's legal identity, not just a copyright line. Consumer
+          Contracts Regulations require the trading name, a geographic address and contact details
+          to be available BEFORE an order is placed, and the footer is the one piece of chrome on
+          every page, so putting them here satisfies that for the whole ordering flow at once. */}
       <footer className="layout__footer">
-        <p>&copy; {new Date().getFullYear()} TakeawayOS</p>
+        <address className="layout__business">
+          <strong className="layout__business-name">{BUSINESS.tradingName}</strong>
+          <span>{formatAddressInline()}</span>
+          <span>
+            {/* tel: and mailto: so a phone dials and a desktop opens the mail client, rather than
+                leaving the customer to copy a number out by hand. */}
+            <a href={`tel:${BUSINESS.phone.replace(/\s/g, '')}`}>{BUSINESS.phone}</a>
+            {' · '}
+            <a href={`mailto:${BUSINESS.email}`}>{BUSINESS.email}</a>
+          </span>
+          {/* Only for a registered company -> a sole trader has no number, and && renders nothing
+              rather than the word "null". */}
+          {BUSINESS.companyNumber && (
+            <span>
+              {BUSINESS.registeredName} · Registered in {BUSINESS.registeredIn}, company no.{' '}
+              {BUSINESS.companyNumber}
+            </span>
+          )}
+        </address>
+
+        <p className="layout__footer-meta">
+          <Link to="/privacy">Privacy policy</Link>
+        </p>
+
+        <p className="layout__footer-meta">&copy; {new Date().getFullYear()} {BUSINESS.tradingName}</p>
       </footer>
     </div>
   );

@@ -1,0 +1,54 @@
+/* A page of continuous prose, unlike every other page in the app. The whole file is really one
+   idea: make a wall of legal text readable. */
+
+/* 68ch, not the full content width. Line length is the single biggest factor in whether long text
+   gets read, and --content-width is tuned for a menu grid, which is far too wide for paragraphs. */
+.privacy {
+  max-width: 68ch;
+}
+
+.privacy__updated {
+  margin-top: var(--space-2);
+  color: var(--text-muted);
+  font-size: 0.9375rem;
+}
+
+.privacy__section {
+  margin-top: var(--space-6);
+}
+
+.privacy__section h2 {
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--border);
+  margin-bottom: var(--space-3);
+}
+
+/* Subheadings inside a section: smaller than the h2 and with no rule, so the "What we collect"
+   section reads as one section with parts rather than four separate ones. */
+.privacy__section h3 {
+  margin-top: var(--space-4);
+  font-size: 1.0625rem;
+}
+
+/* Spacing between paragraphs rather than a first-line indent - indents are for print, and on a
+   phone they make the first line look like a mistake. */
+.privacy__section p {
+  margin-top: var(--space-3);
+  line-height: 1.65; /* looser than the app default: sustained reading, not scanning */
+}
+
+.privacy__section ul {
+  margin-top: var(--space-3);
+  padding-left: var(--space-4); /* room for the markers, which list-style renders outside the box */
+  list-style: disc;
+}
+
+.privacy__section li {
+  margin-top: var(--space-2);
+  line-height: 1.65;
+}
+
+.privacy a {
+  color: var(--brand);
+  text-decoration: underline; /* underlined, not colour-only: colour alone fails for a colour-blind reader */
+}

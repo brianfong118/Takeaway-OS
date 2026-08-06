@@ -15,6 +15,7 @@ import OwnerDashboardPage from './pages/OwnerDashboardPage.jsx';
 import OwnerMenuPage from './pages/OwnerMenuPage.jsx';
 import OwnerSettingsPage from './pages/OwnerSettingsPage.jsx';
 import DriverDashboardPage from './pages/DriverDashboardPage.jsx';
+import PrivacyPage from './pages/PrivacyPage.jsx';
 import NotFoundPage from './pages/NotFoundPage.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
 import { ROLES } from './api/auth.js';
@@ -77,6 +78,13 @@ export default function App() {
         <Route element={<ProtectedRoute roles={[ROLES.Driver]} />}>
           <Route path="driver" element={<DriverDashboardPage />} />
         </Route>
+
+        {/* Public and unguarded, like the menu: a customer has to be able to read how their data
+            is handled BEFORE deciding to hand any of it over, so it cannot sit behind a login.
+            Linked from the footer, which is on every page, rather than from the nav bar - the nav
+            is for things you are here to do, and the bar is already at its width limit on a
+            phone (see Layout.jsx). */}
+        <Route path="privacy" element={<PrivacyPage />} />
 
         {/* Inside the layout on purpose -> an unknown URL still gets the nav to escape with. */}
         <Route path="*" element={<NotFoundPage />} />

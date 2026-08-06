@@ -2,6 +2,18 @@
   margin-bottom: var(--space-5);
 }
 
+/* Deliberately not styled as a warning banner: it applies to the whole menu all of the time, and
+   an alarm that is always on stops being read. Quiet enough to sit under the title, distinct
+   enough (the accent rule) not to be mistaken for a strapline. */
+.menu__allergens {
+  margin-bottom: var(--space-5);
+  padding-left: var(--space-3);
+  border-left: 3px solid var(--border);
+  font-size: 0.9375rem;
+  color: var(--text-muted);
+  max-width: 62ch; /* keeps it readable on a wide screen instead of one long line */
+}
+
 .menu__section + .menu__section {
   margin-top: var(--space-6); /* gap between sections only, never above the first one */
 }

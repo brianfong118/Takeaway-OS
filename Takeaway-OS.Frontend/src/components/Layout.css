@@ -95,6 +95,37 @@
   color: var(--text-muted);
 }
 
+/* <address> is italic by default in every browser, which reads as emphasis the details do not
+   want. Flex column rather than <br> tags so each line is its own element and the gap is set
+   once here instead of by markup. */
+.layout__business {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-style: normal;
+  margin-bottom: var(--space-3);
+}
+
+/* The one part of the footer that is not muted: the trading name is who the customer is buying
+   from, so it should be legible at a glance rather than read as fine print. */
+.layout__business-name {
+  color: var(--text);
+  font-size: 0.9375rem;
+}
+
+.layout__business a {
+  color: inherit; /* the address block is a unit; brand-coloured links would fragment it */
+  text-decoration: underline;
+}
+
+.layout__business a:hover {
+  color: var(--brand);
+}
+
+.layout__footer-meta + .layout__footer-meta {
+  margin-top: var(--space-1);
+}
+
 .layout__account {
   display: flex;
   align-items: center;
