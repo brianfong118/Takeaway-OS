@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Takeaway_OS.API.Data;
@@ -7,6 +9,7 @@ using Takeaway_OS.API.Models;
 using Takeaway_OS.API.Services;
 using System.Text;
 using System.Text.Json.Serialization;
+using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -90,6 +93,30 @@ builder.Services.AddAuthentication(options =>
 // Enables the [Authorize] / [Authorize(Roles = "Owner")] attributes on controllers.
 builder.Services.AddAuthorization();
 
+// --- Rate limiting ---
+// /api/auth/login is anonymous, public, and asks for credentials, which makes it
+// the one endpoint worth guessing at. Without a limit, an attacker gets unlimited attempts at a
+// known Owner email address for as long as they like.
+//
+// Applied per-endpoint with [EnableRateLimiting] rather than globally: the rest of the API is
+// either behind a JWT or is the menu, and a customer scrolling a menu should never meet a 429.
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+    options.AddPolicy(RateLimitPolicies.Login, httpContext =>
+        // Partitioned by client IP, so one person guessing passwords cannot lock everyone else
+        // Null only if there is no remote IP at all (in-memory test requests);
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 5,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0
+            }));
+});
+
 builder.Services.AddScoped<ICategoryService, CategoryService>();
 builder.Services.AddScoped<IMenuItemService, MenuItemService>();
 builder.Services.AddScoped<IDriverService, DriverService>();
@@ -146,9 +173,23 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
+// Must run FIRST, before anything reads the client's IP. 
+app.UseForwardedHeaders(new ForwardedHeadersOptions
+{
+    ForwardedHeaders = ForwardedHeaders.XForwardedFor, 
+    ForwardLimit = 1,
+    KnownIPNetworks = { },
+    KnownProxies = { }
+});
+
 // UseCors must come before auth: a preflight OPTIONS request carries no JWT, so CORS
 // has to handle it before UseAuthentication/UseAuthorization would otherwise reject it.
 app.UseCors(FrontendCorsPolicy);
+
+// After UseCors so a preflight OPTIONS is answered by CORS and never spends a request from
+// someone's five-a-minute budget; before auth because a limited endpoint should be turned away
+// on cost grounds without the server doing password-hashing work for an attacker first.
+app.UseRateLimiter();
 
 // UseAuthentication decides WHO is calling (reads/validates the JWT).
 // UseAuthorization decides WHAT they're allowed to do ([Authorize] checks).

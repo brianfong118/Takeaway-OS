@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Takeaway_OS.API.DTOs;
 using Takeaway_OS.API.Models;
 using Takeaway_OS.API.Services;
@@ -39,6 +40,11 @@ public class AuthController : ControllerBase
 
     [HttpPost("login")]
     [AllowAnonymous]
+    // 5 attempts per minute per IP (policy defined in Program.cs). Over that, the request is
+    // rejected with a 429 before it reaches this method, so no password is ever checked.
+    // Only this action is limited: register is far less attractive to guess at, since it tells
+    // an attacker nothing they didn't already know.
+    [EnableRateLimiting(RateLimitPolicies.Login)]
     public async Task<ActionResult<AuthResponse>> Login(LoginRequest request)
     {
         var result = await _authService.LoginAsync(request);
