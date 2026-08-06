@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Takeaway_OS.API.Data;
@@ -32,6 +33,12 @@ public class TestWebAppFactory : WebApplicationFactory<Program>
         {
             var dbOptions = services.SingleOrDefault(d => d.ServiceType == typeof(DbContextOptions<AppDbContext>));
             if (dbOptions is not null) services.Remove(dbOptions);
+
+            // Removing DbContextOptions<AppDbContext> alone is NOT enough on EF Core 10.
+            var optionsConfigs = services
+                .Where(d => d.ServiceType == typeof(IDbContextOptionsConfiguration<AppDbContext>))
+                .ToList();
+            foreach (var config in optionsConfigs) services.Remove(config);
 
             // Program.cs already registered Npgsql's provider services in the app container. 
             // If we just add the in-memory provider too, EF sees TWO providers and throws 

@@ -151,13 +151,12 @@ public class AuthService : IAuthService
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSecret)); 
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256); 
 
-        // No refresh tokens in v1 
-        // 1-day expiry means a customer/driver/owner has to log in daily [WILL REVISIT!!!]
+        // expiry by role isn't worth a branch here yet.
         var token = new JwtSecurityToken(
             issuer: _configuration["Jwt:Issuer"],
             audience: _configuration["Jwt:Audience"],
             claims: claims,
-            expires: DateTime.UtcNow.AddDays(1),
+            expires: DateTime.UtcNow.AddDays(30),
             signingCredentials: credentials
         );
 

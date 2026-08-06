@@ -114,15 +114,28 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-// Identity's AspNetRoles table starts empty. 
-// This runs once at startup, before the app accepts any requests
-// Inserts Owner/Driver/Customer if they don't already exist 
-// so registration can assign a user to a role that's guaranteed to be there
-
-// A "using" scope is needed because RoleManager is Scoped (tied to a request)
-// but this code runs outside of any request, so a scope has to be created and disposed manually.
+// --- Startup database work ---
+// Both steps below run once at startup, before the app accepts any requests, and both
+// need a service scope: AppDbContext and RoleManager are registered Scoped (tied to an
+// HTTP request), but this code runs outside any request, so a scope has to be created
+// and disposed manually. One scope covers both, and the ORDER inside it matters —
+// migrations must create the AspNetRoles table before role seeding tries to write to it.
 using (var scope = app.Services.CreateScope())
 {
+    // 1. Apply any pending EF Core migrations
+    // Guarded by IsRelational() because migrations are a relational-provider concept: the
+    // integration tests swap Postgres for the in-memory provider, which has no schema to
+    // migrate and throws on MigrateAsync. Those tests build their schema with EnsureCreated.
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    if (db.Database.IsRelational())
+    {
+        await db.Database.MigrateAsync();
+    }
+
+    // 2. Seed the roles.
+    // Identity's AspNetRoles table starts empty.
+    // Inserts Owner/Driver/Customer if they don't already exist
+    // so registration can assign a user to a role that's guaranteed to be there.
     var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole<int>>>();
     foreach (var role in Roles.All)
     {
