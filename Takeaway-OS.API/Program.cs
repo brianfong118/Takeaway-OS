@@ -209,6 +209,24 @@ app.UseAuthorization();
 
 app.MapControllers();
 
+// The only route outside /api, and the only one not on a controller 
+//
+// It exists for two reasons that turned out to be the same reason:
+//   1. The host's health check needs a path that returns 200 when the app is alive. Pointed at a
+//      path that does not exist, a health check fails forever, and the platform responds by
+//      restarting a container that was never actually unhealthy.
+//   2. Without it, opening the API's own URL returns a bare 404, which reads as a broken deploy
+//      to anyone who clicks it - including whoever is debugging this in six months.
+//
+// Deliberately says nothing else. No version, no database check, no counts: a health endpoint
+// that queries the database reports the DATABASE's health, so a slow query would take the whole
+// service down on a platform that restarts anything failing its check. "The process is up and
+// serving HTTP" is the only claim this makes, and the only one it can make cheaply.
+//
+// Anonymous without needing [AllowAnonymous]: authorization here is opt-in per endpoint, and
+// there is no fallback policy, so an endpoint with no requirement is simply open.
+app.MapGet("/", () => Results.Ok(new { service = "TakeawayOS API", status = "ok" }));
+
 app.Run();
 
 // Top-level statements above compile into an auto-generated, internal 'Program' class. 
