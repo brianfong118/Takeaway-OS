@@ -3,8 +3,7 @@
 Online ordering and order management for an independent takeaway : menu, basket, priced modifiers,
 Stripe checkout, and separate owner and driver dashboards.
 
-**[Live demo]**
-<!-- TODO: paste the Vercel URL into the link above once deployed -->
+**[Live demo](https://takeaway-os-sage.vercel.app/)**
 
 Built in C# and React for a real business (my parents' takeaway) to replace telephone-only ordering.
 The shop closed before launch, so it is deployed as a demo instead. It runs on Stripe **test keys**, so
