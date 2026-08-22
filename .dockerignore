@@ -1,0 +1,17 @@
+# Keeps local build output out of the image.
+#
+# Not a size optimisation. COPY would otherwise pull your machine's bin/ and obj/ into the build,
+# where they sit on top of what the container restores - stale assemblies and a project.assets.json
+# describing paths that do not exist inside the image. That produces build failures that look like
+# code errors, and it only happens on a machine that has built locally, so it is the kind of thing
+# that works in CI and fails for you.
+**/bin/
+**/obj/
+
+# Not needed by the API image, and node_modules in particular is tens of thousands of files that
+# would be sent to the Docker daemon as build context for no reason.
+**/node_modules/
+**/dist/
+.git/
+.vs/
+.vscode/
