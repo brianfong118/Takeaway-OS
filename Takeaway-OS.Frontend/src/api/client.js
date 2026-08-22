@@ -52,6 +52,13 @@ function extractErrorMessage(body, status) {
     if (body.detail) return body.detail;
     if (body.title) return body.title;
   }
+  
+  // Deliberately vague about which limit was hit. This layer does not know which endpoint the
+  // caller used, and telling someone the exact budget is a favour to whoever is probing it.
+  if (status === 429) {
+    return 'Too many requests in a short space of time. Please wait a minute and try again.';
+  }
+
   return `Request failed with status ${status}.`;
 }
 

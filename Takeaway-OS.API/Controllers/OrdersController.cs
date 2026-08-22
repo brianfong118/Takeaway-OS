@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Takeaway_OS.API.DTOs;
 using Takeaway_OS.API.Extensions;  // User.GetApplicationUserId() - reads the caller's id off the JWT
 using Takeaway_OS.API.Models;
@@ -92,6 +93,7 @@ public class OrdersController : ControllerBase
 
     [HttpPost]
     [AllowAnonymous] // guest checkout must stay open; logged-in customers also hit this same endpoint
+    [EnableRateLimiting(RateLimitPolicies.CreateOrder)]
     public async Task<ActionResult<OrderCreateResponseDto>> Create(OrderCreateDto dto)
     {
         // AllowAnonymous -> UseAuthentication still decodes an Authorization header if one was sent

@@ -5,6 +5,23 @@
   flex-direction: column;
 }
 
+/* The demo disclosure. Uses the existing --warning pair rather than a new colour*/
+.layout__demo {
+  background: var(--warning-bg);
+  border-bottom: 1px solid var(--warning);
+  color: var(--warning);
+  font-size: 0.875rem;
+  text-align: center;
+
+  /* Matches .layout__bar and .layout__main, so the text lines up with the page content instead
+     of running the full width of a desktop monitor. The band itself still spans edge to edge. */
+  padding: var(--space-2) var(--space-4);
+}
+
+.layout__demo strong {
+  font-weight: 700;
+}
+
 .layout__header {
   position: sticky; /* stays put once it would scroll away -> basket/nav always reachable */
   top: 0;

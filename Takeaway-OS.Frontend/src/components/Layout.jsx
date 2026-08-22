@@ -2,7 +2,7 @@ import { Link, NavLink, Outlet } from 'react-router-dom';
 import { useBasket } from '../hooks/useBasket.js';
 import { useAuth } from '../hooks/useAuth.js';
 import { ROLES } from '../api/auth.js';
-import { BUSINESS, formatAddressInline } from '../config/business.js';
+import { BUSINESS, DEMO_NOTICE, formatAddressInline } from '../config/business.js';
 import './Layout.css';
 
 // Shared chrome for every customer-facing page. Rendered by the layout route in App.jsx,
@@ -24,6 +24,14 @@ export default function Layout() {
 
   return (
     <div className="layout">
+      {/* Here rather than on individual pages because it has to cover every route, and App.jsx
+          nests ALL of them - /owner and /driver included - inside this layout route, so one
+          element is the whole site.*/}
+      <p className="layout__demo">
+        <strong>Demo site.</strong> A portfolio demonstration of a takeaway ordering system, not a
+        real restaurant. No real orders are placed and no real payments are taken.
+      </p>
+
       <header className="layout__header">
         <div className="layout__bar">
           {/* Plain Link, not NavLink -> the brand is a way home, never a highlighted tab. */}
@@ -122,9 +130,13 @@ export default function Layout() {
           <span>{formatAddressInline()}</span>
           <span>
             {/* tel: and mailto: so a phone dials and a desktop opens the mail client, rather than
-                leaving the customer to copy a number out by hand. */}
-            <a href={`tel:${BUSINESS.phone.replace(/\s/g, '')}`}>{BUSINESS.phone}</a>
-            {' · '}
+                leaving the customer to copy a number out by hand*/}
+            {BUSINESS.phone && (
+              <>
+                <a href={`tel:${BUSINESS.phone.replace(/\s/g, '')}`}>{BUSINESS.phone}</a>
+                {' · '}
+              </>
+            )}
             <a href={`mailto:${BUSINESS.email}`}>{BUSINESS.email}</a>
           </span>
           {/* Only for a registered company -> a sole trader has no number, and && renders nothing
@@ -136,6 +148,9 @@ export default function Layout() {
             </span>
           )}
         </address>
+
+        {/* Outside the <address> element, which is specifically for contact details*/}
+        <p className="layout__footer-meta">{DEMO_NOTICE}</p>
 
         <p className="layout__footer-meta">
           <Link to="/privacy">Privacy policy</Link>

@@ -10,6 +10,10 @@ export default function MenuPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // The free hosting tier stops the API when nobody is using it, so the first request after an
+  // idle spell waits for a container to boot - roughly a minute. fetch has no timeout of its own
+  const [isSlow, setIsSlow] = useState(false);
+
   useEffect(() => {
     // Flipped by the cleanup below. Guards every setState so a response that arrives after
     // this component is gone cannot update state that no longer exists.
@@ -36,6 +40,19 @@ export default function MenuPage() {
     };
   }, []); // empty deps, so this runs once when the page mounts
 
+  // On a DELAY rather than shown immediately: a warm server answers in well under a second, and
+  // explaining a wait that is not happening is its own kind of noise.
+  //
+  // clearTimeout for the same reason the confirmation page clears its interval - nothing owns a
+  // browser timer, so unmounting does not stop it, and the callback would set state on a component
+  // that is gone. Depending on isLoading means a fast response cancels the timer before it fires.
+  useEffect(() => {
+    if (!isLoading) return;
+
+    const timerId = setTimeout(() => setIsSlow(true), 3000);
+    return () => clearTimeout(timerId);
+  }, [isLoading]);
+
   // Derived from state on every render, not stored in state. Keeping a copy in state would
   // give two sources of truth that can drift apart.
   const sections = categories
@@ -46,7 +63,17 @@ export default function MenuPage() {
     .filter((section) => section.items.length > 0); // hide a category with nothing available
 
   if (isLoading) {
-    return <p className="menu__state">Loading menu...</p>;
+    return (
+      <div className="menu__state">
+        <p>Loading menu...</p>
+        {isSlow && (
+          <p className="menu__state-detail">
+            This demo runs on a free server that sleeps when nobody is using it, so the first load
+            can take up to a minute. Everything is quick once it has woken up.
+          </p>
+        )}
+      </div>
+    );
   }
 
   if (error) {

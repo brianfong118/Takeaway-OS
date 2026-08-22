@@ -94,9 +94,14 @@ builder.Services.AddAuthentication(options =>
 builder.Services.AddAuthorization();
 
 // --- Rate limiting ---
-// /api/auth/login is anonymous, public, and asks for credentials, which makes it
-// the one endpoint worth guessing at. Without a limit, an attacker gets unlimited attempts at a
-// known Owner email address for as long as they like.
+// Covers the three endpoints that are anonymous, public, and WRITE something. Each is limited for
+// a different reason:
+//
+//   login       - asks for credentials, so it is the one endpoint worth guessing at. Unlimited,
+//                 an attacker gets endless attempts at a known Owner email address.
+//   register    - creates a row and an Identity user per call.
+//   create-order- creates an order AND a Stripe PaymentIntent per call, so a loop against it costs
+//                 database rows on a free tier and hits Stripe's own limits on our account.
 //
 // Applied per-endpoint with [EnableRateLimiting] rather than globally: the rest of the API is
 // either behind a JWT or is the menu, and a customer scrolling a menu should never meet a 429.
@@ -104,17 +109,22 @@ builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 
-    options.AddPolicy(RateLimitPolicies.Login, httpContext =>
-        // Partitioned by client IP, so one person guessing passwords cannot lock everyone else
-        // Null only if there is no remote IP at all (in-memory test requests);
+    // All three policies are the same shape and differ only in budget, so the shape is written once.
+    // Partitioned by client IP, so one person hammering an endpoint cannot lock everyone else out.
+    // RemoteIpAddress is null only when there is no remote IP at all (in-memory test requests), and
+    // those all then share the single "unknown" bucket - fine while no test posts in a loop.
+    static RateLimitPartition<string> PerIp(HttpContext httpContext, int permitLimit) =>
         RateLimitPartition.GetFixedWindowLimiter(
             partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
             factory: _ => new FixedWindowRateLimiterOptions
             {
-                PermitLimit = 5,
+                PermitLimit = permitLimit,
                 Window = TimeSpan.FromMinutes(1),
                 QueueLimit = 0
-            }));
+            });
+    options.AddPolicy(RateLimitPolicies.Login, ctx => PerIp(ctx, 5));       // mistyping a password a few times
+    options.AddPolicy(RateLimitPolicies.Register, ctx => PerIp(ctx, 3));    // signing up is a once-ever action
+    options.AddPolicy(RateLimitPolicies.CreateOrder, ctx => PerIp(ctx, 10)); // demo visitors do place several
 });
 
 builder.Services.AddScoped<ICategoryService, CategoryService>();

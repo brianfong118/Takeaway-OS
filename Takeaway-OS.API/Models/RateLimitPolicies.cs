@@ -10,4 +10,6 @@ namespace Takeaway_OS.API.Models;
 public static class RateLimitPolicies
 {
     public const string Login = "login";
+    public const string Register = "register";
+    public const string CreateOrder = "create-order";
 }

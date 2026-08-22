@@ -20,6 +20,7 @@ public class AuthController : ControllerBase
 
     [HttpPost("register")]
     [AllowAnonymous] // turn off [Authorize] for this endpoint -> no JWT required to register
+    [EnableRateLimiting(RateLimitPolicies.Register)]
     public async Task<ActionResult<AuthResponse>> Register(RegisterRequest request)
     {
         // UseAuthentication() (Program.cs) already decoded any Authorization header into User
@@ -42,8 +43,6 @@ public class AuthController : ControllerBase
     [AllowAnonymous]
     // 5 attempts per minute per IP (policy defined in Program.cs). Over that, the request is
     // rejected with a 429 before it reaches this method, so no password is ever checked.
-    // Only this action is limited: register is far less attractive to guess at, since it tells
-    // an attacker nothing they didn't already know.
     [EnableRateLimiting(RateLimitPolicies.Login)]
     public async Task<ActionResult<AuthResponse>> Login(LoginRequest request)
     {

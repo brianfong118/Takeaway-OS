@@ -49,9 +49,9 @@ export default function PaymentPage() {
 
         if (error || !paymentIntent) {
           // Deliberately does not say "try again": if the secret is unreadable we cannot tell
-          // whether money moved, so the phone is the only safe advice.
+          // whether money moved, so on a live site the phone is the only safe advice.
           setLoadError(
-            'We could not check the status of this payment. Please call the restaurant to confirm your order before paying again.',
+            'We could not check the status of this payment. On a live site you would be asked to phone the restaurant rather than pay again, since there is no way to tell from here whether the payment went through. Nothing is really charged on this demo.',
           );
           return;
         }
@@ -192,6 +192,27 @@ export default function PaymentPage() {
       <p className="payment__order">
         Order #{pending.orderId} is held for you and goes to the kitchen once it is paid for.
       </p>
+
+      {/* Demo deployment only. The site runs on Stripe TEST keys, which reject a real card
+          outright, so without published test numbers a visitor simply cannot finish - and the
+          order state machine, the webhook and both dashboards all live on the far side of this
+          form*/}
+      <div className="payment__demo">
+        <p className="payment__demo-title">Demo payment</p>
+        <p>No real payment is taken. Use one of Stripe&rsquo;s test cards:</p>
+        <ul>
+          <li>
+            <code>4242 4242 4242 4242</code> - payment succeeds
+          </li>
+          <li>
+            <code>4000 0000 0000 0002</code> - payment is declined
+          </li>
+        </ul>
+        <p>
+          Any future expiry date, any CVC, any postcode. A real card number is rejected by Stripe
+          before any payment is attempted.
+        </p>
+      </div>
 
       {/* The provider. It awaits stripePromise itself, then builds the iframes described by
           clientSecret, which is what tells Stripe which payment this form is for and how much it

@@ -12,6 +12,37 @@
   font-size: 0.9375rem;
 }
 
+/* The test-card panel*/
+.payment__demo {
+  margin-bottom: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--warning);
+  border-radius: var(--radius);
+  background: var(--warning-bg);
+  color: var(--warning);
+  font-size: 0.875rem;
+}
+
+.payment__demo-title {
+  font-weight: 700;
+  margin-bottom: var(--space-1);
+}
+
+.payment__demo ul {
+  margin: var(--space-2) 0;
+  padding-left: var(--space-4);
+}
+
+/* Tabular figures so the four groups line up between the two cards; monospace alone does not
+   guarantee it in a system UI stack, and misaligned digits make a card number hard to read off. */
+.payment__demo code {
+  font-family: ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, Consolas, monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
 /* Same flex-column as .checkout__form. The gap is what separates Stripe's iframe from
    the pay button, since the iframe brings no margins of its own. */
 .payment__form {
