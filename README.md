@@ -92,7 +92,10 @@ creation fails.
   rewrites what a past order cost
 - **Stripe's webhook is the only path to `Paid`**, signature-verified and idempotent, because a
   browser claiming success can be forged or lost
-- **Totals are computed server-side**, and mirrored on the client in exactly one function
+- **Cancelling an order refunds or voids its payment in the same action**, and unpaid orders expire
+  after 30 minutes, so a cancelled order can never leave a customer charged
+- **Totals are computed server-side, once, and stored on the order**, so a later pricing change never
+  rewrites what a past order cost; the client mirrors the formula in exactly one function
 - **Guests read their order via a random capability token**, since sequential ids would expose every
   customer's details
 - **Opening-hours windows can cross midnight**, so overlap is checked on a circular weekly timeline
@@ -101,7 +104,7 @@ creation fails.
 ## Known limitations
 
 - Allergen text lives in item descriptions, so it reaches the menu but not the order or the driver
-- Pending (unpaid) orders appear on no owner screen
+- Pending (unpaid) orders appear on no owner screen; they are cancelled automatically after 30 minutes
 - No password reset, and no route to create a second owner
 - The owner board's History covers the last 24 hours; there is no search or older order history
 - No email or SMS: a guest's only record is their confirmation link

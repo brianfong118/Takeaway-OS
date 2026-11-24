@@ -112,8 +112,9 @@ function GroupCard({ group, onGroupChanged, onGroupDeleted, onOptionsChanged }) 
     if (name.trim().length === 0) return setError('Give the group a name.');
     const min = Number(minSelect) || 0;
     const max = Number(maxSelect) || 0;
-    // Checked here because the API does not: a group with max below min can never be satisfied,
-    // and the customer would meet a picker that refuses every choice.
+    // A group with max below min can never be satisfied, and the customer would meet a picker that
+    // refuses every choice. The API enforces this too (ModifierGroupRules) and is the real check;
+    // this copy only spares the owner a round trip to find out.
     if (max < min) return setError('Max cannot be less than min.');
 
     const payload = { name: name.trim(), minSelect: min, maxSelect: max, isRequired };

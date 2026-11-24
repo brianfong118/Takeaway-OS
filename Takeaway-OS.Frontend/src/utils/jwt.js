@@ -34,7 +34,7 @@ export function decodeJwt(token) {
   }
 }
 
-// A token with no exp counts as expired. Ours always has one (GenerateJwt sets a 1-day expiry),
+// A token with no exp counts as expired. Ours always has one (GenerateJwt sets a 30-day expiry),
 // so its absence means the token is not one of ours and should not be treated as valid.
 export function isExpired(claims) {
   if (!claims || typeof claims.exp !== 'number') return true;

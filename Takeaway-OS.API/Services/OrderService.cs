@@ -440,7 +440,7 @@ public class OrderService : IOrderService
     }
 
     // Forward flow only: Pending → Paid → Preparing → Ready → (OutForDelivery →) Completed.
-    // Paid is rejected unconditionally -> only ever set by the future Stripe webhook NOT through this endpoint
+    // Paid is rejected unconditionally -> only ever set by the Stripe webhook (MarkOrderPaidAsync), NOT through this endpoint
     // OutForDelivery only makes sense for delivery orders 
     // Pickup orders go straight from Ready to Completed. 
     // Preparing has no path to Cancelled yet -> needs a staff-override flow that isn't built yet.
