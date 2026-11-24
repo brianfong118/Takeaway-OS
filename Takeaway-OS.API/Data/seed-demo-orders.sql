@@ -300,14 +300,16 @@ WHERE "PublicToken" IN (
 -- every screen reads it rather than recalculating. Rows inserted by hand skip that step, so the
 -- column would sit at its default of 0 and every demo order would show as free. This computes it
 -- with the same formula as OrderService.ComputeTotal. Keep the two in step if the formula changes.
+-- Modifiers are per PORTION: each line is (UnitPrice + its deltas) * Quantity. The inner COALESCE
+-- is because SUM over a line with no modifiers is NULL in SQL, not 0.
 UPDATE "Orders" o
 SET "Total" =
-      COALESCE((SELECT SUM(oi."UnitPrice" * oi."Quantity")
+      COALESCE((SELECT SUM((oi."UnitPrice"
+                            + COALESCE((SELECT SUM(m."PriceDelta")
+                                        FROM "OrderItemModifiers" m
+                                        WHERE m."OrderItemId" = oi."Id"), 0))
+                           * oi."Quantity")
                 FROM "OrderItems" oi
-                WHERE oi."OrderId" = o."Id"), 0)
-    + COALESCE((SELECT SUM(m."PriceDelta")
-                FROM "OrderItemModifiers" m
-                JOIN "OrderItems" oi ON oi."Id" = m."OrderItemId"
                 WHERE oi."OrderId" = o."Id"), 0)
     + o."DeliveryFee";
 

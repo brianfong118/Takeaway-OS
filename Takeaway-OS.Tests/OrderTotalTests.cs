@@ -4,13 +4,13 @@ using Takeaway_OS.API.Services;
 namespace Takeaway_OS.Tests;
 
 // Unit tests for the pricing formula in OrderService.ComputeTotal:
-//   sum(UnitPrice * Quantity)  +  sum(every modifier's PriceDelta)  +  DeliveryFee
+//   sum over lines of (UnitPrice + that line's modifier PriceDeltas) * Quantity  +  DeliveryFee
 // It runs once, at order creation, and the result is stored on Order.Total; these tests pin the
 // formula down, and the last one pins down that reads use the stored value instead of recomputing.
 public class OrderTotalTests
 {
     [Fact]
-    public void Total_sums_line_prices_times_quantity_plus_modifier_deltas()
+    public void Total_sums_each_line_price_plus_its_modifiers_times_quantity()
     {
         // Arrange: two lines. First is £5.00 x2 with a +£0.50 modifier; second is £3.00 x1 with none.
         var order = new Order
@@ -29,7 +29,28 @@ public class OrderTotalTests
 
         var total = OrderService.ComputeTotal(order);
 
-        Assert.Equal(13.50m, total); // (5.00 * 2) + (3.00 * 1) + 0.50 = 13.50
+        Assert.Equal(14.00m, total); // (5.00 + 0.50) * 2 + 3.00 * 1 = 14.00
+    }
+
+    [Fact]
+    public void Modifiers_are_charged_once_per_portion()
+    {
+        // The case that motivated per-portion pricing: three pizzas, each made with extra cheese.
+        // Charging the cheese once (the old per-line formula) would give 25.00 for food worth 27.00.
+        var order = new Order
+        {
+            OrderItems = new List<OrderItem>
+            {
+                new OrderItem
+                {
+                    UnitPrice = 8.00m,
+                    Quantity = 3,
+                    OrderItemModifiers = new List<OrderItemModifier> { new() { PriceDelta = 1.00m } }
+                }
+            }
+        };
+
+        Assert.Equal(27.00m, OrderService.ComputeTotal(order)); // (8.00 + 1.00) * 3
     }
 
     [Fact]

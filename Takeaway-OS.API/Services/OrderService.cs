@@ -526,15 +526,20 @@ public class OrderService : IOrderService
         }).ToList();
     }
 
-    // The pricing formula: sum(UnitPrice * Quantity) + sum(modifier PriceDeltas) + the delivery fee.
+    // The pricing formula: sum over lines of (UnitPrice + that line's modifier PriceDeltas) * Quantity,
+    // plus the delivery fee once.
     // Runs ONCE per order, in CreateAsync, and the result is stored on Order.Total. Nothing reads an
     // order's total through this method afterwards, which is what makes it safe to change the formula
-    // without rewriting the totals of orders already placed.
+    // without rewriting the totals of orders already placed (it has changed once, see below).
+    //
+    // Modifiers are priced PER PORTION. A line is "Quantity identical portions, each made with these
+    // options", which is how the kitchen reads "3 x Pizza, Extra cheese": three pizzas, each with
+    // extra cheese. So the cheese is charged three times. Until Nov 2026 the deltas were added once
+    // per line, which charged £1 for cheese on all three pizzas.
     internal static decimal ComputeTotal(Order order)
     {
-        return order.OrderItems.Sum(oi => oi.UnitPrice * oi.Quantity)
-             + order.OrderItems.Sum(oi => oi.OrderItemModifiers.Sum(m => m.PriceDelta))
-             // Per ORDER, not per line -> added once, outside both sums. Already 0 on a
+        return order.OrderItems.Sum(oi => (oi.UnitPrice + oi.OrderItemModifiers.Sum(m => m.PriceDelta)) * oi.Quantity)
+             // Per ORDER, not per line -> added once, outside the sum. Already 0 on a
              // collection order, so there's deliberately no OrderType check here.
              + order.DeliveryFee;
     }

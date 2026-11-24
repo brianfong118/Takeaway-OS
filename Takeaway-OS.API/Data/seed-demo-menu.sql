@@ -217,9 +217,9 @@ INSERT INTO "ModifierGroups" ("Name", "MinSelect", "MaxSelect", "IsRequired") VA
 -- kitchen, and charging for removing an onion would be strange. Zero-delta options are the reason
 -- the schema stores a delta per option rather than assuming every option costs something.
 --
--- Note what deltas do NOT do: OrderItemModifier has no quantity column, so a selected option is
--- one row however many portions the line covers. Two portions with Extra Chicken adds 1.50 once,
--- not twice. That is a deliberate commercial call recorded in CLAUDE.md, not an oversight here.
+-- Deltas are charged PER PORTION: two portions with Extra Chicken adds 1.50 twice, because the
+-- kitchen makes both portions with it. OrderItemModifier still has no quantity column; the line's
+-- own Quantity covers it. See CLAUDE.md (until Nov 2026 a delta was charged once per line).
 INSERT INTO "ModifierOptions" ("ModifierGroupId", "Name", "PriceDelta", "IsActive") VALUES
     ((SELECT "Id" FROM "ModifierGroups" WHERE "Name" = 'Spice Level'), 'Mild',        0.00, true),
     ((SELECT "Id" FROM "ModifierGroups" WHERE "Name" = 'Spice Level'), 'Medium',      0.00, true),

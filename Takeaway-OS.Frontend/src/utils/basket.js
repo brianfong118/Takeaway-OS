@@ -12,10 +12,12 @@ export function lineKey({ menuItemId, modifiers, notes }) {
   return `${menuItemId}|${ids}|${notes.trim()}`;
 }
 
-// Mirrors OrderService.ComputeTotal exactly: sum(UnitPrice * Quantity) + sum(PriceDelta)
+// Mirrors OrderService.ComputeTotal exactly: (UnitPrice + sum(PriceDelta)) * Quantity.
+// Modifiers are priced PER PORTION: "3 x Pizza, Extra cheese" is three pizzas that each get extra
+// cheese, so the cheese is charged three times, same as the server.
 // Also used by OrderConfirmationPage for order items, which carry the same
 // unitPrice/quantity/modifiers[].priceDelta shape. One function is what stops the two drifting.
 export function lineTotal(line) {
   const modifiers = line.modifiers.reduce((sum, m) => sum + m.priceDelta, 0);
-  return line.unitPrice * line.quantity + modifiers;
+  return (line.unitPrice + modifiers) * line.quantity;
 }
