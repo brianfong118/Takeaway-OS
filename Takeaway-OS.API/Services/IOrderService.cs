@@ -51,6 +51,17 @@ public enum OrderStatusUpdateResult
     PaymentInProgress
 }
 
+// What one pass of ExpireStalePendingOrdersAsync did, so the background job can log it.
+// Counts rather than a bool because each stale order is handled on its own and can end three ways.
+public class PendingOrderExpiryResult
+{
+    public int Expired { get; set; }        // payment voided, order now Cancelled
+    public int LeftForWebhook { get; set; } // Stripe says it was actually paid; the webhook will mark it Paid
+
+    // Orders whose Stripe call failed (network, outage). Left Pending and retried on the next pass.
+    public List<int> FailedOrderIds { get; set; } = new();
+}
+
 public enum DriverAssignmentResult
 {
     Success,
@@ -99,6 +110,10 @@ public interface IOrderService
 
     // Called ONLY by the Stripe webhook (never a normal status update) to move an order to Paid.
     Task<OrderPaymentResult> MarkOrderPaidAsync(string paymentIntentId);
+
+    // Called ONLY by PendingOrderExpiryService. Cancels orders still Pending that were created before
+    // cutoffUtc, voiding each one's PaymentIntent first so a forgotten tab can't pay for it later.
+    Task<PendingOrderExpiryResult> ExpireStalePendingOrdersAsync(DateTime cutoffUtc);
 
     // No DeleteAsync: orders are never deleted, only moved to Cancelled via UpdateStatusAsync
 }

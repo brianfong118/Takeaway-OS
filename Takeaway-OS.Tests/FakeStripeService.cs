@@ -23,6 +23,9 @@ internal sealed class FakeStripeService : IStripeService
     // Simulates Stripe being down or rejecting the refund: RefundAsync throws.
     public bool FailRefunds { get; set; }
 
+    // Simulates Stripe being unreachable when cancelling: CancelPaymentIntentAsync throws.
+    public bool FailCancels { get; set; }
+
     public Task<PaymentIntentResult> CreatePaymentIntentAsync(decimal amountInPounds, int orderId)
     {
         ChargedAmounts.Add(amountInPounds);
@@ -46,6 +49,7 @@ internal sealed class FakeStripeService : IStripeService
 
     public Task<bool> CancelPaymentIntentAsync(string paymentIntentId)
     {
+        if (FailCancels) throw new StripeException("Simulated Stripe failure");
         if (PaymentAlreadyTaken) return Task.FromResult(false);
 
         CancelledPaymentIntents.Add(paymentIntentId);

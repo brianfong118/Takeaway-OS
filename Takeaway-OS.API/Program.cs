@@ -143,6 +143,10 @@ builder.Services.AddScoped<ICustomerService, CustomerService>();
 builder.Services.AddScoped<IStripeService, StripeService>();
 // Register the "X"Service with the DI container, so that it can be injected into controllers or other services that require it.
 
+// Not a request-scoped service like the ones above: a background job the host starts once and runs
+// for the app's whole life, cancelling orders left unpaid (see PendingOrderExpiryService).
+builder.Services.AddHostedService<PendingOrderExpiryService>();
+
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())

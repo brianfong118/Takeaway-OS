@@ -521,4 +521,56 @@ public class OrderService : IOrderService
         await _context.SaveChangesAsync();
         return OrderPaymentResult.MarkedPaid;
     }
+
+    // At most this many orders per pass, oldest first, so one pass after a long outage can't make
+    // hundreds of Stripe calls in a row. Anything left over is picked up by the next pass.
+    private const int ExpiryBatchSize = 50;
+
+    public async Task<PendingOrderExpiryResult> ExpireStalePendingOrdersAsync(DateTime cutoffUtc)
+    {
+        var result = new PendingOrderExpiryResult();
+
+        var staleOrders = await _context.Orders
+            .Where(o => o.Status == OrderStatus.Pending && o.CreatedAt < cutoffUtc)
+            .OrderBy(o => o.CreatedAt)
+            .Take(ExpiryBatchSize)
+            .ToListAsync();
+
+        foreach (var order in staleOrders)
+        {
+            bool voided;
+            try
+            {
+                // The same rule the Owner's cancel uses: make the payment impossible first, and only
+                // then call the order Cancelled.
+                voided = await VoidPendingPaymentAsync(order);
+            }
+            catch (Stripe.StripeException)
+            {
+                // One order's Stripe failure must not stop the rest of the batch. It stays Pending
+                // and is simply retried on the next pass. Only Stripe errors are caught here: a
+                // database error is a different kind of problem and goes up to the job's own handler.
+                result.FailedOrderIds.Add(order.Id);
+                continue;
+            }
+
+            if (!voided)
+            {
+                // The customer paid after all (the webhook is on its way), so this is about to be a
+                // real Paid order. Leave it alone.
+                result.LeftForWebhook++;
+                continue;
+            }
+
+            order.Status = OrderStatus.Cancelled;
+
+            // Saved per order rather than once at the end: each PaymentIntent is already cancelled in
+            // Stripe by this point, so recording that immediately means a later failure in the loop
+            // can't leave a voided payment attached to an order that still says Pending.
+            await _context.SaveChangesAsync();
+            result.Expired++;
+        }
+
+        return result;
+    }
 }
