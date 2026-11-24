@@ -98,6 +98,10 @@ public class OrderCreationTests
 
         Assert.NotNull(result.Order);
         Assert.Equal(new[] { 9.00m }, _stripe.ChargedAmounts); // £8.00 pizza + £1.00 cheese
+
+        // The stored snapshot is the same number Stripe was asked for, and it's what the response shows.
+        Assert.Equal(9.00m, _context.Orders.Single().Total);
+        Assert.Equal(9.00m, result.Order!.Total);
     }
 
     [Fact]

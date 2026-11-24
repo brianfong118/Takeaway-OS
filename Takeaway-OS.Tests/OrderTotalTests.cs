@@ -3,9 +3,10 @@ using Takeaway_OS.API.Services;
 
 namespace Takeaway_OS.Tests;
 
-// Unit tests for the order Total computed in OrderService.MapToDto:
+// Unit tests for the pricing formula in OrderService.ComputeTotal:
 //   sum(UnitPrice * Quantity)  +  sum(every modifier's PriceDelta)  +  DeliveryFee
-// Total is never stored; it's derived on every read so this test pins the formula down.
+// It runs once, at order creation, and the result is stored on Order.Total; these tests pin the
+// formula down, and the last one pins down that reads use the stored value instead of recomputing.
 public class OrderTotalTests
 {
     [Fact]
@@ -26,9 +27,9 @@ public class OrderTotalTests
             }
         };
 
-        var dto = OrderService.MapToDto(order);
+        var total = OrderService.ComputeTotal(order);
 
-        Assert.Equal(13.50m, dto.Total); // (5.00 * 2) + (3.00 * 1) + 0.50 = 13.50
+        Assert.Equal(13.50m, total); // (5.00 * 2) + (3.00 * 1) + 0.50 = 13.50
     }
 
     [Fact]
@@ -48,9 +49,7 @@ public class OrderTotalTests
             }
         };
 
-        var dto = OrderService.MapToDto(order);
-
-        Assert.Equal(4.00m, dto.Total);
+        Assert.Equal(4.00m, OrderService.ComputeTotal(order));
     }
 
     [Fact]
@@ -58,9 +57,7 @@ public class OrderTotalTests
     {
         var order = new Order(); // OrderItems defaults to an empty list
 
-        var dto = OrderService.MapToDto(order);
-
-        Assert.Equal(0m, dto.Total);
+        Assert.Equal(0m, OrderService.ComputeTotal(order));
     }
 
     [Fact]
@@ -79,10 +76,8 @@ public class OrderTotalTests
             }
         };
 
-        var dto = OrderService.MapToDto(order);
-
-        Assert.Equal(2.50m, dto.DeliveryFee);  // surfaced separately so the client can show a breakdown
-        Assert.Equal(14.50m, dto.Total);       // 5.00 + 6.00 + 1.00 + 2.50 once = 14.50
+        Assert.Equal(14.50m, OrderService.ComputeTotal(order)); // 5.00 + 6.00 + 1.00 + 2.50 once = 14.50
+        Assert.Equal(2.50m, OrderService.MapToDto(order).DeliveryFee); // surfaced separately so the client can show a breakdown
     }
 
     [Fact]
@@ -96,8 +91,21 @@ public class OrderTotalTests
             OrderItems = new List<OrderItem> { new OrderItem { UnitPrice = 8.00m, Quantity = 1 } }
         };
 
-        var dto = OrderService.MapToDto(order);
+        Assert.Equal(8.00m, OrderService.ComputeTotal(order));
+    }
 
-        Assert.Equal(8.00m, dto.Total);
+    [Fact]
+    public void Reads_show_the_stored_total_not_a_recalculation()
+    {
+        // An order whose stored Total differs from what today's formula would give, as a pre-change
+        // order would after the pricing formula moves on. The DTOs must show what was CHARGED.
+        var order = new Order
+        {
+            Total = 10.00m,
+            OrderItems = new List<OrderItem> { new OrderItem { UnitPrice = 12.00m, Quantity = 1 } }
+        };
+
+        Assert.Equal(10.00m, OrderService.MapToDto(order).Total);
+        Assert.Equal(10.00m, OrderService.MapToGuestDto(order).Total);
     }
 }

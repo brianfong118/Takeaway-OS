@@ -48,6 +48,20 @@ public class Order
     // genuinely were charged nothing for delivery, so the migration's 0 default is
     // accurate history rather than a placeholder (contrast StripePaymentIntentId).
     public decimal DeliveryFee { get; set; }
+
+    // SNAPSHOT of what this order costs: OrderService.ComputeTotal, run once at creation, and the
+    // exact amount the Stripe PaymentIntent was created for. Every DTO reads this column rather than
+    // recomputing, for the same reason UnitPrice and DeliveryFee are snapshots: if the pricing FORMULA
+    // ever changes (it has: modifiers moved from per-line to per-portion), an order placed before the
+    // change must keep showing what the customer was actually charged.
+    // It also gives a number to reconcile against Stripe's records without re-deriving anything.
+    public decimal Total { get; set; }
+
+    // When the Stripe webhook confirmed payment (UTC). Null while Pending, and on orders that predate
+    // the column, whose payment time was never recorded. The kitchen's "waiting N min" counts from
+    // here, because an order isn't the kitchen's problem until it's paid.
+    public DateTime? PaidAt { get; set; }
+
     public OrderStatus Status { get; set; } = OrderStatus.Pending;
     public string Notes { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

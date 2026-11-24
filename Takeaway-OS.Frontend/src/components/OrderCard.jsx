@@ -27,7 +27,10 @@ export default function OrderCard({
         <span className={`order-card__type order-card__type--${isDelivery ? 'delivery' : 'collection'}`}>
           {isDelivery ? 'Delivery' : 'Collection'}
         </span>
-        <span className="order-card__waiting">{formatWaiting(order.createdAt)}</span>
+        {/* Counted from payment, because that's when the order becomes the kitchen's job: time a
+            customer spent typing in a card isn't time the kitchen kept them waiting. `??` falls
+            back to createdAt for orders placed before PaidAt was recorded, which have null. */}
+        <span className="order-card__waiting">{formatWaiting(order.paidAt ?? order.createdAt)}</span>
       </header>
 
       {/* The driver's whole job is on this block, so it sits above the items, not below. */}

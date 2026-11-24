@@ -104,6 +104,5 @@ creation fails.
 - Pending (unpaid) orders appear on no owner screen
 - No password reset, and no route to create a second owner
 - `GET /api/orders` is unpaginated
-- Waiting times are measured from creation — there is no `PaidAt` column
 - No email or SMS: a guest's only record is their confirmation link
 - On the demo, nothing advances an order past `Paid` — no one is logged in to press the next button

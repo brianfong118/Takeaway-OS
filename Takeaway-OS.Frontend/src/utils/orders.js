@@ -68,17 +68,18 @@ export function isDashboardVisible(order) {
   return order.status !== ORDER_STATUSES.Pending;
 }
 
-// Minutes since the order was placed. createdAt is UTC with a trailing Z, so Date parses it
-// correctly without any manual offset.
+// Minutes since a timestamp from the API. Both paidAt and createdAt are UTC with a trailing Z, so
+// Date parses them correctly without any manual offset.
 //
-// Measured from CreatedAt, not payment: there is no PaidAt column, so this reads slightly high
-// when a customer sat on the Stripe form. Near-identical in the normal case.
-export function minutesSince(createdAt) {
-  return Math.max(0, Math.floor((Date.now() - new Date(createdAt).getTime()) / 60000));
+// OrderCard passes paidAt (when payment was confirmed), falling back to createdAt for orders placed
+// before PaidAt was recorded, which would otherwise read high by however long the customer spent
+// on the Stripe form.
+export function minutesSince(timestamp) {
+  return Math.max(0, Math.floor((Date.now() - new Date(timestamp).getTime()) / 60000));
 }
 
-export function formatWaiting(createdAt) {
-  const mins = minutesSince(createdAt);
+export function formatWaiting(timestamp) {
+  const mins = minutesSince(timestamp);
   if (mins < 1) return 'just now';
   if (mins < 60) return `${mins} min`;
   const hours = Math.floor(mins / 60);

@@ -48,6 +48,7 @@ public class OrderPaymentTests
 
         Assert.Equal(OrderPaymentResult.MarkedPaid, result);
         Assert.Equal(OrderStatus.Paid, order.Status);
+        Assert.NotNull(order.PaidAt); // recorded, so the kitchen's "waiting" clock starts at payment
     }
 
     [Fact]

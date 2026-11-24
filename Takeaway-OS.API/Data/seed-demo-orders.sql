@@ -295,6 +295,29 @@ WHERE "PublicToken" IN (
     '00000000-0000-4000-8000-000000000007'
 );
 
+-- Totals and payment times ---------------------------------------------------------------------
+-- Orders.Total is a snapshot the API writes once at creation (it is what Stripe was charged), and
+-- every screen reads it rather than recalculating. Rows inserted by hand skip that step, so the
+-- column would sit at its default of 0 and every demo order would show as free. This computes it
+-- with the same formula as OrderService.ComputeTotal. Keep the two in step if the formula changes.
+UPDATE "Orders" o
+SET "Total" =
+      COALESCE((SELECT SUM(oi."UnitPrice" * oi."Quantity")
+                FROM "OrderItems" oi
+                WHERE oi."OrderId" = o."Id"), 0)
+    + COALESCE((SELECT SUM(m."PriceDelta")
+                FROM "OrderItemModifiers" m
+                JOIN "OrderItems" oi ON oi."Id" = m."OrderItemId"
+                WHERE oi."OrderId" = o."Id"), 0)
+    + o."DeliveryFee";
+
+-- PaidAt a minute after creation for every order that got past payment, standing in for the
+-- webhook. Pending was never paid; Cancelled is left NULL because whether it was paid before being
+-- cancelled is exactly what a seeded row can't know.
+UPDATE "Orders"
+SET "PaidAt" = "CreatedAt" + interval '1 minute'
+WHERE "Status" IN ('Paid', 'Preparing', 'Ready', 'OutForDelivery', 'Completed');
+
 -- Check what landed: the board as the owner will see it.
 SELECT "Status", COUNT(*) AS orders, SUM(CASE WHEN "DriverId" IS NOT NULL THEN 1 ELSE 0 END) AS with_driver
 FROM "Orders"

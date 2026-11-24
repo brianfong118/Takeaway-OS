@@ -309,6 +309,11 @@ public class OrderService : IOrderService
         // the order without ever writing it.
         var total = ComputeTotal(order);
 
+        // SNAPSHOT: the one and only time this order's total is calculated. The same value is sent to
+        // Stripe below and read back by every DTO, so the charge and the receipt can't disagree, now
+        // or after any future change to ComputeTotal.
+        order.Total = total;
+
         // Stripe rejects any GBP charge under its minimum. Without this check such an order would be
         // saved, then the PaymentIntent call would throw, leaving a 500 and an orphaned Pending order
         // for a basket that was never payable. A plain 400: the customer can add something.
@@ -474,8 +479,10 @@ public class OrderService : IOrderService
             DriverId = order.DriverId,
             Items = MapItems(order),
             DeliveryFee = order.DeliveryFee, // the snapshot, read straight off the row
-            // Never stored — always derived fresh from the line items so it can't drift from them.
-            Total = ComputeTotal(order)
+            // The stored snapshot, NOT ComputeTotal(order): recomputing here would show an old order
+            // at today's formula rather than at what the customer was charged.
+            Total = order.Total,
+            PaidAt = order.PaidAt
         };
     }
 
@@ -493,9 +500,9 @@ public class OrderService : IOrderService
             CreatedAt = order.CreatedAt,
             Items = MapItems(order),
             DeliveryFee = order.DeliveryFee,
-            // Same ComputeTotal as MapToDto, so the guest's receipt, the Owner's list and the amount
-            // charged in Stripe are all one calculation and can't drift apart.
-            Total = ComputeTotal(order)
+            // The same stored snapshot as MapToDto, which is also the amount sent to Stripe, so the
+            // guest's receipt, the Owner's list and the charge are one number and can't drift apart.
+            Total = order.Total
         };
     }
 
@@ -519,9 +526,10 @@ public class OrderService : IOrderService
         }).ToList();
     }
 
-    // The authoritative order total: sum(UnitPrice * Quantity) + sum(modifier PriceDeltas) + the delivery fee.
-    // Extracted so the amount we charge in Stripe and the Total we show the client come from the
-    // exact same calculation -> never disagree
+    // The pricing formula: sum(UnitPrice * Quantity) + sum(modifier PriceDeltas) + the delivery fee.
+    // Runs ONCE per order, in CreateAsync, and the result is stored on Order.Total. Nothing reads an
+    // order's total through this method afterwards, which is what makes it safe to change the formula
+    // without rewriting the totals of orders already placed.
     internal static decimal ComputeTotal(Order order)
     {
         return order.OrderItems.Sum(oi => oi.UnitPrice * oi.Quantity)
@@ -544,6 +552,9 @@ public class OrderService : IOrderService
         if (order.Status != OrderStatus.Pending) return OrderPaymentResult.NotPayable; // e.g. Cancelled -> don't resurrect
 
         order.Status = OrderStatus.Paid;
+        // Our clock at the moment the webhook lands, not Stripe's event timestamp: close enough
+        // (webhooks arrive within seconds) and it keeps this method a plain id lookup.
+        order.PaidAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();
         return OrderPaymentResult.MarkedPaid;
     }

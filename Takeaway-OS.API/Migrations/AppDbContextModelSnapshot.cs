@@ -535,6 +535,9 @@ namespace Takeaway_OS.API.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<DateTime?>("PaidAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<Guid>("PublicToken")
                         .HasColumnType("uuid");
 
@@ -544,6 +547,9 @@ namespace Takeaway_OS.API.Migrations
 
                     b.Property<string>("StripePaymentIntentId")
                         .HasColumnType("text");
+
+                    b.Property<decimal>("Total")
+                        .HasColumnType("numeric");
 
                     b.HasKey("Id");
 

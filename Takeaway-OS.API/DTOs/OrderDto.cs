@@ -30,9 +30,13 @@ public class OrderDto  // shape returned by GET requests
     // having to subtract the lines from the total and hope the difference is the fee.
     public decimal DeliveryFee { get; set; }
 
-    // Computed by the service on every read: sum(UnitPrice * Quantity) + sum(modifier PriceDeltas) + DeliveryFee.
-    // Never stored on the Orders table — always derived fresh, so it can't drift from the line items.
+    // What the order was charged: Order.Total, snapshotted at creation and sent to Stripe as-is.
+    // Read from the row, never recomputed, so a later pricing change can't rewrite an old order.
     public decimal Total { get; set; }
+
+    // When payment was confirmed (UTC), null while Pending and on orders older than the column.
+    // The owner board measures "waiting" from here, falling back to CreatedAt when it's null.
+    public DateTime? PaidAt { get; set; }
 }
 
 // IValidatableObject adds a cross-field rule (see Validate below) on top of the per-property attributes.
@@ -141,7 +145,7 @@ public class GuestOrderDto
     // can't reconcile against the items they picked reads as an overcharge. 0 on collection.
     public decimal DeliveryFee { get; set; }
 
-    // Same ComputeTotal as everywhere else, so the receipt can't disagree with what Stripe charged.
+    // The stored Order.Total, the exact amount sent to Stripe, so the receipt can't disagree with the charge.
     public decimal Total { get; set; }
 }
 
