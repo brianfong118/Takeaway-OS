@@ -18,6 +18,15 @@ FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
 COPY --from=build /app .
 
+# Run as the unprivileged user Microsoft's .NET images ship with, instead of root.
+# A container's root is close enough to the host's root that a compromised app running as it has
+# far more room to do damage (write anywhere in the image, install tools). The API needs none of
+# that: it only reads its own files and opens a network port.
+# $APP_UID is an environment variable the base image defines for exactly this line (it holds the
+# user's numeric id), so nothing here hard-codes a user name or number.
+# Works with the port below because 8080 is above 1024: ports under 1024 need root to listen on.
+USER $APP_UID
+
 # Render assigns a port at runtime through $PORT and routes traffic to it; a container listening
 # anywhere else is treated as a failed deploy. ASP.NET takes its address from ASPNETCORE_URLS.
 #
