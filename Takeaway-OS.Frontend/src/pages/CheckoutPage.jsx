@@ -27,7 +27,7 @@ const EMPTY_FORM = {
 };
 
 export default function CheckoutPage() {
-  const { lines, subtotal, clearBasket } = useBasket();
+  const { lines, subtotal } = useBasket();
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -163,8 +163,11 @@ export default function CheckoutPage() {
         lines,
       });
 
-      // Order before basket: if writing the handoff somehow threw, the basket would still be
-      // intact and the customer could retry, rather than losing it with nothing to show for it.
+      // The basket is NOT cleared here any more. Placing the order isn't paying for it: a customer
+      // who backs out of /pay, or closes the tab (the handoff lives in per-tab sessionStorage),
+      // used to come back to an empty basket and an order they could no longer reach. PaymentPage
+      // clears it once Stripe confirms the payment. An unpaid order left behind is cancelled by the
+      // server after 30 minutes, so going back and ordering again leaves nothing dangling.
       savePendingPayment({
         orderId: response.order.id,
         clientSecret: response.clientSecret,
@@ -172,7 +175,6 @@ export default function CheckoutPage() {
         // sole route back to their own order -> losing it here loses it permanently.
         publicToken: response.publicToken,
       });
-      clearBasket();
       navigate('/pay');
     } catch (err) {
       setError(err);

@@ -5,6 +5,7 @@ import PaymentForm from '../components/PaymentForm.jsx';
 import { stripePromise } from '../utils/stripe.js';
 import { loadPendingPayment, clearPendingPayment } from '../utils/pendingPayment.js';
 import { formatPrice } from '../utils/format.js';
+import { useBasket } from '../hooks/useBasket.js';
 // Borrows the checkout stylesheet rather than duplicating it. Imported explicitly instead of
 // relying on CheckoutPage having already pulled it in , that would break the day either page
 // is code-split. Bundlers include a stylesheet once no matter how many modules import it.
@@ -26,6 +27,12 @@ export default function PaymentPage() {
   // Passing the FUNCTION, not calling it
   const [pending] = useState(loadPendingPayment);
   const navigate = useNavigate();
+
+  // The basket is emptied HERE, once Stripe says the payment succeeded, not when the order was
+  // created: until then the customer may back out to change something, and the basket is what
+  // they'd come back to. clearBasket is a stable function (see BasketProvider), so listing it in
+  // the effect's dependencies below never re-runs the effect.
+  const { clearBasket } = useBasket();
 
   // { status, amount } once Stripe has been asked about this payment; null while that is in flight.
   const [intent, setIntent] = useState(null);
@@ -60,6 +67,9 @@ export default function PaymentPage() {
         // that succeeded. Send it to the confirmation page, the same place a fresh payment lands.
         if (paymentIntent.status === 'succeeded') {
           clearPendingPayment(); // drop the handoff so a later visit cannot re-offer a paid order
+          // The 3D Secure redirect path lands here rather than in handleSuccess below, because the
+          // page was reloaded mid-payment, so the basket has to be emptied on this path as well.
+          clearBasket();
 
           // Handoffs written before the confirmation page existed carry no token. Falling through
           // to the local success panel is better than navigating to /order/undefined.
@@ -78,8 +88,9 @@ export default function PaymentPage() {
         if (paymentIntent.status === 'canceled') clearPendingPayment();
 
         // Stripe holds money as a whole number of pence (850 = £8.50). Divided once, for display
-        // only. This is the server-computed total, and the only place the browser can learn it
-        // from -> the basket was cleared the moment the order was created.
+        // only. This is the server-computed total, i.e. what the customer is actually charged.
+        // The basket still exists at this point, but its subtotal is the browser's copy of the
+        // prices, so it's never what this page shows as the amount to pay.
         setIntent({ status: paymentIntent.status, amount: paymentIntent.amount / 100 });
       } catch {
         if (!ignore) {
@@ -93,14 +104,19 @@ export default function PaymentPage() {
     return () => {
       ignore = true;
     };
-    // navigate is stable across renders (react-router memoises it), so listing it can't retrigger
-    // this effect - it is here to satisfy the exhaustive-deps rule honestly rather than silence it.
-  }, [pending, navigate]); // `pending` is set once and never replaced, so this runs exactly once
+    // navigate and clearBasket are stable across renders (react-router memoises navigate, and
+    // BasketProvider builds its actions once), so listing them can't retrigger this effect - they
+    // are here to satisfy the exhaustive-deps rule honestly rather than silence it.
+  }, [pending, navigate, clearBasket]); // `pending` is set once and never replaced, so this runs exactly once
 
   // Called by PaymentForm after a clean confirmation. does NOT tell the API.
   // The order is flipped to Paid by Stripe's webhook calling the server directly.
   function handleSuccess(paymentIntent) {
     clearPendingPayment();
+
+    // Only a settled payment empties the basket. 'processing' can still fail, and if it does the
+    // customer will want their basket back to try again.
+    if (paymentIntent.status === 'succeeded') clearBasket();
 
     // 'processing' also reaches here (an async payment method that hasn't settled). It is NOT a
     // success, so it stays on this page and falls to the processing panel below.

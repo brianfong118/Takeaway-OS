@@ -64,6 +64,25 @@ export function BasketProvider({ children }) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(lines));
   }, [lines]); // runs after any change, so the basket survives a refresh
 
+  // Components dispatch through these instead of touching dispatch directly, so action
+  // shapes stay an internal detail of this file.
+  //
+  // Built ONCE (empty dependency array) rather than inside the `value` memo below, so each function
+  // keeps the same identity for the provider's whole life. That matters to any consumer that calls
+  // one from a useEffect: the function then belongs in the effect's dependency array, and if its
+  // identity changed every time the basket did, calling clearBasket() inside an effect would change
+  // the basket, hand the effect a "new" clearBasket, and re-run the effect. PaymentPage does exactly
+  // that. Safe to build once because dispatch is guaranteed stable by React.
+  const actions = useMemo(
+    () => ({
+      addLine: (line) => dispatch({ type: 'add', line }),
+      setLineQuantity: (key, quantity) => dispatch({ type: 'setQuantity', key, quantity }),
+      removeLine: (key) => dispatch({ type: 'remove', key }),
+      clearBasket: () => dispatch({ type: 'clear' }),
+    }),
+    [],
+  );
+
   // Without useMemo this object would be rebuilt every render, and since consumers compare it
   // by reference, every consumer would re-render even when the basket had not changed.
   const value = useMemo(
@@ -71,15 +90,9 @@ export function BasketProvider({ children }) {
       lines,
       itemCount: lines.reduce((count, l) => count + l.quantity, 0),
       subtotal: lines.reduce((sum, l) => sum + lineTotal(l), 0),
-
-      // Components dispatch through these instead of touching dispatch directly, so action
-      // shapes stay an internal detail of this file.
-      addLine: (line) => dispatch({ type: 'add', line }),
-      setLineQuantity: (key, quantity) => dispatch({ type: 'setQuantity', key, quantity }),
-      removeLine: (key) => dispatch({ type: 'remove', key }),
-      clearBasket: () => dispatch({ type: 'clear' }),
+      ...actions, // spread copies the four stable functions in as properties of this object
     }),
-    [lines], // dispatch is guaranteed stable by React, so it needs no entry here
+    [lines, actions], // actions never changes, but listing it keeps the dependency list honest
   );
 
   return <BasketContext.Provider value={value}>{children}</BasketContext.Provider>;
