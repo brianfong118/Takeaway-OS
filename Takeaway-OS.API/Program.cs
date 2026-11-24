@@ -183,14 +183,34 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
-// Must run FIRST, before anything reads the client's IP. 
-app.UseForwardedHeaders(new ForwardedHeadersOptions
+// Must run FIRST, before anything reads the client's IP.
+//
+// Behind Render's proxy, RemoteIpAddress is the PROXY, not the customer. The proxy appends the
+// real client IP to X-Forwarded-For, and this middleware copies it into RemoteIpAddress, which is
+// what the rate limiter partitions on. Without it every customer shares the proxy's one bucket.
+var forwardedHeaders = new ForwardedHeadersOptions
 {
-    ForwardedHeaders = ForwardedHeaders.XForwardedFor, 
-    ForwardLimit = 1,
-    KnownIPNetworks = { },
-    KnownProxies = { }
-});
+    ForwardedHeaders = ForwardedHeaders.XForwardedFor,
+
+    // Read only the LAST entry: the one Render's proxy appended. Anything to the left of it was
+    // written by the client and can be forged to dodge the rate limit.
+    ForwardLimit = 1
+};
+
+// The middleware only trusts X-Forwarded-For when the request came from a "known" proxy, and the
+// defaults are loopback only (127.0.0.0/8 and ::1). Render's proxy is not loopback, so with the
+// defaults the header is silently ignored in production while working perfectly on localhost.
+//
+// These MUST be Clear() calls. Writing `KnownProxies = { }` inside the object initializer above
+// looks like "set to empty" but is a collection initializer: it calls Add() once per element, and
+// with zero elements it does nothing, so the loopback defaults stay. (That exact bug shipped once.)
+//
+// Trusting any proxy is safe here only because the API is reachable solely through Render's
+// proxy. If it were ever exposed directly, a client could set the header itself.
+forwardedHeaders.KnownIPNetworks.Clear();
+forwardedHeaders.KnownProxies.Clear();
+
+app.UseForwardedHeaders(forwardedHeaders);
 
 // UseCors must come before auth: a preflight OPTIONS request carries no JWT, so CORS
 // has to handle it before UseAuthentication/UseAuthorization would otherwise reject it.
