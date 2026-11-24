@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { getAllOrders, updateOrderStatus, assignDriver, ORDER_STATUSES } from '../api/orders.js';
+import { getOwnerBoard, updateOrderStatus, assignDriver, ORDER_STATUSES } from '../api/orders.js';
 import { getDrivers } from '../api/drivers.js';
-import { OWNER_TABS, ownerActions, isDashboardVisible } from '../utils/orders.js';
+import { OWNER_TABS, ownerActions } from '../utils/orders.js';
 import OrderCard from '../components/OrderCard.jsx';
 import OwnerNav from '../components/OwnerNav.jsx';
 import './OwnerDashboardPage.css';
@@ -29,13 +29,14 @@ export default function OwnerDashboardPage() {
 
   const load = useCallback(async () => {
     try {
-      const data = await getAllOrders();
-      const visible = data.filter(isDashboardVisible);
-      setOrders(visible);
+      // Already exactly what the board shows: the server leaves out Pending orders and anything
+      // finished more than 24 hours ago, so there's no client-side filtering step any more.
+      const data = await getOwnerBoard();
+      setOrders(data);
       setError(null);
 
       const paidIds = new Set(
-        visible.filter((o) => o.status === ORDER_STATUSES.Paid).map((o) => o.id),
+        data.filter((o) => o.status === ORDER_STATUSES.Paid).map((o) => o.id),
       );
       if (seenPaidIds.current === null) {
         seenPaidIds.current = paidIds;
@@ -201,7 +202,7 @@ export default function OwnerDashboardPage() {
               onClick={() => selectTab(t.key)}
             >
               {t.label}
-              {/* History is unbounded and its count means nothing at a glance. */}
+              {/* History (the last 24 hours) needs no action, so a count there is noise at a glance. */}
               {t.key !== 'history' && <span className="owner__count">{count}</span>}
               {alerting && <span className="owner__new">New</span>}
             </button>

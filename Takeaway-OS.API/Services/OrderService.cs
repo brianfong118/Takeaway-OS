@@ -27,11 +27,33 @@ public class OrderService : IOrderService
         _deliveryAreaService = deliveryAreaService;
     }
 
-    public async Task<List<OrderDto>> GetAllAsync()
+    // How far back the owner board's History tab reaches. 24 hours covers "a customer rings about last
+    // night's order" while keeping the query bounded: the board polls every 10 seconds all shift, and
+    // returning every order ever placed (the old behaviour) grew without limit as the shop traded.
+    private static readonly TimeSpan BoardHistoryWindow = TimeSpan.FromHours(24);
+
+    public async Task<List<OrderDto>> GetBoardAsync()
     {
+        var historyCutoff = DateTime.UtcNow - BoardHistoryWindow;
+
         var orders = await _context.Orders
             .Include(o => o.OrderItems)
                 .ThenInclude(oi => oi.OrderItemModifiers)
+            // Two halves:
+            //  1. Every order the kitchen still has to act on, however old. An order stuck in Ready
+            //     since yesterday must stay visible until someone deals with it.
+            //  2. Finished orders (Completed/Cancelled) from the last 24 hours, for the History tab.
+            // Pending is in neither half: it means payment never completed, and the kitchen must
+            // never see an unpaid order. (Filtering it here rather than in the browser means unpaid
+            // orders' names, phones and addresses aren't even sent to the board.)
+            // Written as explicit == comparisons rather than an array .Contains(): Status is stored
+            // as text through a value converter, and plain comparisons translate to SQL unambiguously.
+            .Where(o => o.Status == OrderStatus.Paid
+                     || o.Status == OrderStatus.Preparing
+                     || o.Status == OrderStatus.Ready
+                     || o.Status == OrderStatus.OutForDelivery
+                     || ((o.Status == OrderStatus.Completed || o.Status == OrderStatus.Cancelled)
+                         && o.CreatedAt >= historyCutoff))
             .OrderByDescending(o => o.CreatedAt) // newest first — most useful default for staff scanning the list
             .ToListAsync();
         return orders.Select(MapToDto).ToList();

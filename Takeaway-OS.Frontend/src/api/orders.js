@@ -78,11 +78,13 @@ export function getMyOrders() {
 
 // --- Owner-only ---
 
-// GET /api/orders
-// Returns: OrderDto[] - every order ever placed, newest first. No server-side filter or paging,
-// so the dashboard trims client-side. First thing to revisit if the list gets slow.
-export function getAllOrders() {
-  return api.get('/api/orders');
+// GET /api/orders/board
+// Returns: OrderDto[] - every paid order still in progress, plus Completed/Cancelled orders from
+// the last 24 hours, newest first. Never Pending: the server leaves unpaid orders out entirely.
+// Bounded on the server so the dashboard's 10-second poll stays the same size however long the
+// shop has been trading.
+export function getOwnerBoard() {
+  return api.get('/api/orders/board');
 }
 
 // PUT /api/orders/{id}/status -> 204

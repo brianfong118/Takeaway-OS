@@ -103,6 +103,6 @@ creation fails.
 - Allergen text lives in item descriptions, so it reaches the menu but not the order or the driver
 - Pending (unpaid) orders appear on no owner screen
 - No password reset, and no route to create a second owner
-- `GET /api/orders` is unpaginated
+- The owner board's History covers the last 24 hours; there is no search or older order history
 - No email or SMS: a guest's only record is their confirmation link
 - On the demo, nothing advances an order past `Paid` — no one is logged in to press the next button

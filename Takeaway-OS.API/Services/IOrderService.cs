@@ -73,7 +73,9 @@ public enum DriverAssignmentResult
 
 public interface IOrderService
 {
-    Task<List<OrderDto>> GetAllAsync();
+    // The owner board: every paid order still in progress, plus Completed/Cancelled orders from the
+    // last 24 hours. Never Pending. Bounded on purpose, because the board polls it all shift.
+    Task<List<OrderDto>> GetBoardAsync();
     Task<OrderDto?> GetByIdAsync(int id);
 
     // Every order placed by the Customer profile attached to this Identity login.

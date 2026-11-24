@@ -19,11 +19,14 @@ public class OrdersController : ControllerBase
         _orderService = orderService;
     }
 
-    [HttpGet]
+    // The owner dashboard's data: in-progress orders plus the last 24 hours of finished ones.
+    // Replaces an unfiltered GET /api/orders that returned every order ever placed on every 10-second
+    // poll. A literal segment like "mine", so it can't be mistaken for the "{id}" route.
+    [HttpGet("board")]
     [Authorize(Roles = Roles.Owner)] // the whole-restaurant view; customers get their own scoped list from GET /mine
-    public async Task<ActionResult<List<OrderDto>>> GetAll()
+    public async Task<ActionResult<List<OrderDto>>> GetBoard()
     {
-        return Ok(await _orderService.GetAllAsync());
+        return Ok(await _orderService.GetBoardAsync());
     }
 
     // Sits above GetById's "{id}" route on purpose: "mine" is a literal segment, and if the

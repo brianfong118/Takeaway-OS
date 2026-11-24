@@ -49,7 +49,8 @@ export function driverAction(order) {
 }
 
 // The owner dashboard's tabs, in flow order. `statuses` is what each tab filters to; History
-// deliberately merges the two terminal statuses rather than giving each its own tab.
+// deliberately merges the two terminal statuses rather than giving each its own tab, and only ever
+// holds the last 24 hours, because that's all GET /api/orders/board returns.
 export const OWNER_TABS = [
   { key: 'paid', label: 'Paid', statuses: [ORDER_STATUSES.Paid] },
   { key: 'preparing', label: 'Preparing', statuses: [ORDER_STATUSES.Preparing] },
@@ -61,12 +62,6 @@ export const OWNER_TABS = [
     statuses: [ORDER_STATUSES.Completed, ORDER_STATUSES.Cancelled],
   },
 ];
-
-// Pending is excluded everywhere: it means payment never completed, and an abandoned checkout
-// looks identical to a failed one. Kitchen must never see either.
-export function isDashboardVisible(order) {
-  return order.status !== ORDER_STATUSES.Pending;
-}
 
 // Minutes since a timestamp from the API. Both paidAt and createdAt are UTC with a trailing Z, so
 // Date parses them correctly without any manual offset.
