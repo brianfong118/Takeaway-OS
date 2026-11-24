@@ -19,6 +19,10 @@ public class RestaurantSettingsUpdateDto
     // Range, not a service-layer check: [ApiController] turns a violation into a 400 before
     // the service runs. A negative fee would subtract from the total and send Stripe a smaller
     // amount than the food costs; the upper bound only exists to catch a mistyped 250 for 2.50.
-    [Range(0, 100, ErrorMessage = "DeliveryFee must be between 0 and 100.")]
+    //
+    // The decimal overload of [Range]: the int one, [Range(0, 100)], rounded the fee to a whole
+    // number before comparing, so -0.40 became 0 and a negative fee was accepted.
+    [Range(typeof(decimal), "0", "100", ParseLimitsInInvariantCulture = true,
+        ErrorMessage = "DeliveryFee must be between 0 and 100.")]
     public decimal DeliveryFee { get; set; }
 }

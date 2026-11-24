@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace Takeaway_OS.API.DTOs;
 
 public class CategoryDto  // shape returned by GET requests
@@ -9,13 +11,20 @@ public class CategoryDto  // shape returned by GET requests
 
 public class CategoryCreateDto  // shape accepted by POST requests
 {
+    // A blank category would render as an empty heading on the public menu. 60 mirrors the owner form.
+    [Required]
+    [MaxLength(60)]
     public string Name { get; set; } = string.Empty;
+
     public int DisplayOrder { get; set; }
 }
 
 public class CategoryUpdateDto // shape accepted by PUT requests
 {
+    [Required]
+    [MaxLength(60)]
     public string Name { get; set; } = string.Empty;
+
     public int DisplayOrder { get; set; }
 }
 
