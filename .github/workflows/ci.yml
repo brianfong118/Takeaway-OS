@@ -1,0 +1,55 @@
+# Runs the same checks you run locally (dotnet test, npm run lint, npm run build) on every push and
+# pull request, so a broken build or failing test shows up on GitHub as a red cross instead of on
+# the next deploy.
+#
+# GitHub reads every .yml file in .github/workflows/ automatically; nothing else needs setting up.
+# Results appear in the repository's "Actions" tab and next to each commit.
+
+name: CI
+
+on:
+  push:
+  pull_request:
+
+# A newer push to the same branch cancels the run still going for the older one, instead of
+# spending minutes testing a commit that has already been superseded.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # The two jobs share nothing, so GitHub runs them in parallel on separate machines.
+  api:
+    name: API (build + test)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x # latest .NET 10 patch, the same major version the Dockerfile builds with
+
+      # Builds both projects as a side effect. The integration tests swap Postgres for EF Core's
+      # in-memory provider (see TestWebAppFactory), so no database or secrets are needed here.
+      - run: dotnet test Takeaway-OS.slnx
+
+  web:
+    name: Frontend (lint + build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Takeaway-OS.Frontend
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm # reuses downloaded packages between runs, keyed on the lockfile
+          cache-dependency-path: Takeaway-OS.Frontend/package-lock.json
+
+      # `npm ci`, not `npm install`: installs exactly what package-lock.json says and fails if
+      # package.json and the lockfile disagree, rather than quietly updating the lockfile.
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build
