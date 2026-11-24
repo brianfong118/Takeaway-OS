@@ -17,7 +17,9 @@ export function ownerActions(order) {
     case ORDER_STATUSES.Paid:
       return [
         { status: ORDER_STATUSES.Preparing, label: 'Start preparing', variant: 'primary' },
-        { status: ORDER_STATUSES.Cancelled, label: 'Cancel', variant: 'danger' },
+        // Says "refund" because that's what the server now does: cancelling a Paid order refunds
+        // the customer through Stripe in the same action, so the button should not hide it.
+        { status: ORDER_STATUSES.Cancelled, label: 'Cancel & refund', variant: 'danger' },
       ];
     case ORDER_STATUSES.Preparing:
       return [{ status: ORDER_STATUSES.Ready, label: 'Mark ready', variant: 'primary' }];

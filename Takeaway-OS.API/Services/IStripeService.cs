@@ -23,4 +23,18 @@ public interface IStripeService
     // (the caller turns null into a 400 and does nothing)
     // so a faked "payment succeeded" call can't mark an order Paid.
     Event? ConstructEvent(string json, string signatureHeader);
+
+    // Refunds a PAID order's payment in full. Used when the Owner cancels an order the customer
+    // has already been charged for, so cancelling and refunding are one action, not two.
+    // orderId is used to make the call safe to retry (see the idempotency key in StripeService).
+    // Throws on any Stripe failure, so the caller never marks the order Cancelled while the
+    // customer's money is still taken.
+    Task RefundAsync(string paymentIntentId, int orderId);
+
+    // Cancels an UNPAID PaymentIntent so it can never be paid afterwards.
+    // Returns true when the PaymentIntent is now cancelled (including "it already was").
+    // Returns false when it can't be cancelled because the money has already been taken or is
+    // mid-flight (status succeeded / processing): the customer paid in the moment before the
+    // cancel, and the caller must not treat the order as unpaid.
+    Task<bool> CancelPaymentIntentAsync(string paymentIntentId);
 }

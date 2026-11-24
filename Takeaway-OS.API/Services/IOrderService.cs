@@ -43,7 +43,12 @@ public enum OrderStatusUpdateResult
 {
     Success,
     OrderNotFound,
-    InvalidTransition   // covers: backwards/skipped transitions, and manually setting Paid (Stripe-webhook-only)
+    InvalidTransition,  // covers: backwards/skipped transitions, and manually setting Paid (Stripe-webhook-only)
+
+    // 409: the Owner cancelled an order that still looked Pending, but Stripe says the customer
+    // paid in the last few seconds (the webhook just hasn't arrived yet). Nothing is changed; once
+    // the webhook marks it Paid, cancelling again refunds it.
+    PaymentInProgress
 }
 
 public enum DriverAssignmentResult

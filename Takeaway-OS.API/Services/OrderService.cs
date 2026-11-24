@@ -327,9 +327,43 @@ public class OrderService : IOrderService
         if (!IsValidTransition(order, dto.Status))
             return OrderStatusUpdateResult.InvalidTransition;
 
+        // Cancelling has to reverse the money as well as the status, or a cancelled order would
+        // leave the customer charged (Paid) or still able to pay (Pending).
+        // The Stripe call happens BEFORE the status is saved: if it throws, the exception
+        // propagates to a 500 and the order keeps its old status, so "Cancelled" in our database
+        // always means the money really was handled. IsValidTransition only allows Cancelled
+        // from Pending or Paid, so those are the only two cases here.
+        if (dto.Status == OrderStatus.Cancelled)
+        {
+            if (order.Status == OrderStatus.Paid)
+            {
+                // A Paid order always has a PaymentIntent, except the seeded demo orders, which
+                // never went through Stripe and so have nothing to refund.
+                if (order.StripePaymentIntentId is not null)
+                    await _stripeService.RefundAsync(order.StripePaymentIntentId, order.Id);
+            }
+            else if (!await VoidPendingPaymentAsync(order))
+            {
+                return OrderStatusUpdateResult.PaymentInProgress;
+            }
+        }
+
         order.Status = dto.Status;
         await _context.SaveChangesAsync();
         return OrderStatusUpdateResult.Success;
+    }
+
+    // Makes a Pending order's payment impossible to complete, so the order can safely be cancelled.
+    // Returns false when the customer has already paid (the webhook just hasn't landed yet): the
+    // caller must then leave the order alone, because it is about to become Paid.
+    // Shared by the Owner's cancel and the unpaid-order expiry, which both need exactly this rule.
+    private async Task<bool> VoidPendingPaymentAsync(Order order)
+    {
+        // No PaymentIntent (seeded demo orders, or a creation whose Stripe call failed): there is
+        // nothing anyone could pay, so there is nothing to void.
+        if (order.StripePaymentIntentId is null) return true;
+
+        return await _stripeService.CancelPaymentIntentAsync(order.StripePaymentIntentId);
     }
 
     public async Task<DriverAssignmentResult> AssignDriverAsync(int id, OrderDriverAssignmentDto dto)

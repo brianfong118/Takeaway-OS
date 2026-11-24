@@ -128,6 +128,9 @@ public class OrdersController : ControllerBase
         {
             OrderStatusUpdateResult.OrderNotFound => NotFound(),
             OrderStatusUpdateResult.InvalidTransition => BadRequest($"Cannot change order {id} to status '{dto.Status}'."),
+            // 409, not 400: nothing about the request is wrong, the order's real state just moved
+            // underneath it. Same meaning 409 has for the closed shop.
+            OrderStatusUpdateResult.PaymentInProgress => Conflict($"Order {id} has just been paid. Refresh, then cancel it again to refund the payment."),
             _ => NoContent()
         };
     }
