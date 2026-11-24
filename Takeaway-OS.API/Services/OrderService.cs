@@ -246,6 +246,13 @@ public class OrderService : IOrderService
             var selectedOptions = new List<ModifierOption>();
             var offeredGroupIds = menuItem.MenuItemModifierGroups.Select(link => link.ModifierGroupId).ToHashSet();
 
+            // The same option twice on one line ([7, 7]) is refused rather than silently collapsed.
+            // The picker can't produce it (each option is a single checkbox or radio), so a repeat
+            // means a hand-crafted or buggy request, and accepting it would snapshot and CHARGE
+            // that option once per copy. Refusing is also clearer than guessing what was meant.
+            if (itemDto.ModifierOptionIds.Distinct().Count() != itemDto.ModifierOptionIds.Count)
+                return new OrderCreateResult { Error = $"A modifier was selected more than once for MenuItem {itemDto.MenuItemId}." };
+
             foreach (var optionId in itemDto.ModifierOptionIds)
             {
                 var option = await _context.ModifierOptions.FindAsync(optionId);
@@ -298,13 +305,25 @@ public class OrderService : IOrderService
             order.OrderItems.Add(orderItem);
         }
 
+        // Computed from the in-memory graph BEFORE saving, so the minimum check below can refuse
+        // the order without ever writing it.
+        var total = ComputeTotal(order);
+
+        // Stripe rejects any GBP charge under its minimum. Without this check such an order would be
+        // saved, then the PaymentIntent call would throw, leaving a 500 and an orphaned Pending order
+        // for a basket that was never payable. A plain 400: the customer can add something.
+        if (total < IStripeService.MinimumCharge)
+            // "£" written out with a fixed "0.00" format rather than the "C" currency format, which
+            // follows the SERVER's culture: in Render's container that is the invariant culture,
+            // and the customer would read "¤0.30".
+            return new OrderCreateResult { Error = $"Orders must come to at least £{IStripeService.MinimumCharge:0.00}." };
+
         _context.Orders.Add(order);
         await _context.SaveChangesAsync(); // one call persists Order + every OrderItem + every OrderItemModifier together, via the object graph built above
 
-        // Create the Stripe PaymentIntent from calced total + that Db generated Id, 
+        // Create the Stripe PaymentIntent from calced total + that Db generated Id,
         // save once more to store the PaymentIntentId (the webhook's lookup key).
-        // If Stripe throws here (bad key / network), the exception propagates to a 500 and the order is left Pending with no payment 
-        var total = ComputeTotal(order);
+        // If Stripe throws here (bad key / network), the exception propagates to a 500 and the order is left Pending with no payment
         var paymentIntent = await _stripeService.CreatePaymentIntentAsync(total, order.Id);
         order.StripePaymentIntentId = paymentIntent.PaymentIntentId;
         await _context.SaveChangesAsync();
@@ -373,6 +392,13 @@ public class OrderService : IOrderService
 
         if (order.OrderType != OrderType.Delivery)
             return DriverAssignmentResult.NotDeliveryOrder;
+
+        // Only while the order is live. Pending isn't paid for yet, and Completed/Cancelled are
+        // history: changing who delivered a finished order would rewrite the record, not help anyone.
+        // Paid stays allowed even though the dashboard only offers the dropdown from Preparing on;
+        // that is a screen-space choice, not a rule the server needs to enforce.
+        if (order.Status is OrderStatus.Pending or OrderStatus.Completed or OrderStatus.Cancelled)
+            return DriverAssignmentResult.OrderNotActive;
 
         if (dto.DriverId is not null)
         {

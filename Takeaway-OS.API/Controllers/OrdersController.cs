@@ -147,6 +147,7 @@ public class OrdersController : ControllerBase
             DriverAssignmentResult.OrderNotFound => NotFound(),
             DriverAssignmentResult.DriverNotFound => BadRequest($"Driver {dto.DriverId} does not exist."),
             DriverAssignmentResult.NotDeliveryOrder => BadRequest($"Order {id} is not a delivery order, so it can't have a driver."),
+            DriverAssignmentResult.OrderNotActive => BadRequest($"Order {id} is not in progress, so its driver can't be changed."),
             _ => NoContent()
         };
     }

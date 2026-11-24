@@ -67,7 +67,8 @@ public enum DriverAssignmentResult
     Success,
     OrderNotFound, // 404: the {id} in the URL names no order
     DriverNotFound, // 400: the URL is fine, but the body points at a driver that doesn't exist
-    NotDeliveryOrder // 400: the order exists but is Collection, so a driver makes no sense on it
+    NotDeliveryOrder, // 400: the order exists but is Collection, so a driver makes no sense on it
+    OrderNotActive    // 400: the order is Pending (unpaid) or already Completed/Cancelled
 }
 
 public interface IOrderService

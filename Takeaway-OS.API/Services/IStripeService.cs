@@ -14,6 +14,11 @@ public class PaymentIntentResult
 // so controllers/other services never touch the Stripe API surface (mirrors the services-layer rule).
 public interface IStripeService
 {
+    // Stripe's smallest allowed charge in GBP. Any PaymentIntent below it is rejected by Stripe, so
+    // OrderService refuses such an order before saving it. A constant on the interface (allowed
+    // since C# 8) so callers can read Stripe's rule without depending on the concrete StripeService.
+    const decimal MinimumCharge = 0.30m;
+
     // Creates a PaymentIntent for the given amount, in pounds. The service converts to pence
     // (Stripe works in the smallest currency unit) and returns the id + client secret.
     Task<PaymentIntentResult> CreatePaymentIntentAsync(decimal amountInPounds, int orderId);
