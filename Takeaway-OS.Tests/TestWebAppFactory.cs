@@ -2,7 +2,6 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Takeaway_OS.API.Data;
 
@@ -17,15 +16,27 @@ public class TestWebAppFactory : WebApplicationFactory<Program>
     {
         // Program.cs reads JWT_SECRET and throws if it's absent, so provide one (plus the issuer/audience)
         // These are test-only values; nothing real is signed with them.
-        builder.ConfigureAppConfiguration((_, config) =>
-        {
-            config.AddInMemoryCollection(new Dictionary<string, string?>
-            {
-                ["JWT_SECRET"] = "integration-test-signing-key-at-least-32-chars",
-                ["Jwt:Issuer"] = "TakeawayOS",
-                ["Jwt:Audience"] = "TakeawayOS"
-            });
-        });
+        //
+        // UseSetting, NOT ConfigureAppConfiguration. Program.cs reads JWT_SECRET from
+        // builder.Configuration while its top-level statements run, BEFORE builder.Build(). With
+        // minimal hosting, ConfigureAppConfiguration is only applied at Build(), so the value arrived
+        // too late and Program.cs threw "JWT_SECRET is not configured". UseSetting values are handed
+        // to Program.cs up front (like command-line arguments), so they're there when it reads them.
+        //
+        // That bug was invisible locally: the factory runs the app as Development, which loads the
+        // developer's user-secrets, so the REAL JWT_SECRET was quietly used instead. CI has no
+        // user-secrets, which is where it failed.
+        builder.UseSetting("JWT_SECRET", "integration-test-signing-key-at-least-32-chars");
+        builder.UseSetting("Jwt:Issuer", "TakeawayOS");
+        builder.UseSetting("Jwt:Audience", "TakeawayOS");
+
+        // Blank the Stripe keys too, overriding whatever user-secrets would supply. Program.cs sets
+        // Stripe's GLOBAL api key from STRIPE_SECRET_KEY, so locally every integration test ran with
+        // the developer's real (test-mode) Stripe key loaded. Nothing calls Stripe here today, but if
+        // a future test ever did, it must fail loudly ("No API key provided"), not create real
+        // PaymentIntents on someone's account. Same tests, same result, on any machine.
+        builder.UseSetting("STRIPE_SECRET_KEY", "");
+        builder.UseSetting("STRIPE_WEBHOOK_SECRET", "");
 
         // Runs AFTER Program.cs has registered its services, so we can find the real (Npgsql) DbContext
         // registration, remove it, and register an in-memory one in its place. The rest of the app is untouched.
