@@ -11,7 +11,7 @@ import { useAuth } from '../hooks/useAuth.js';
 import { useBasket } from '../hooks/useBasket.js';
 import { savePendingPayment } from '../utils/pendingPayment.js';
 import { formatPrice } from '../utils/format.js';
-import { lineTotal } from '../utils/basket.js';
+import { basketFingerprint, lineTotal } from '../utils/basket.js';
 import { looksOutsideArea } from '../utils/postcode.js';
 import './CheckoutPage.css';
 
@@ -174,6 +174,9 @@ export default function CheckoutPage() {
         // Sent by the API only in this one response. A guest has no login, so this token is the
         // sole route back to their own order -> losing it here loses it permanently.
         publicToken: response.publicToken,
+        // What the basket held when THIS order was placed, so paying it later only empties the
+        // basket if nothing has been added or changed since (see basketFingerprint).
+        basketFingerprint: basketFingerprint(lines),
       });
       navigate('/pay');
     } catch (err) {

@@ -5,8 +5,11 @@ const KEY = 'takeawayos.pendingPayment';
 // publicToken rides along so /pay can hand it to the confirmation page once payment succeeds.
 // It is the guest's ONLY way back to this order, and it exists exactly once, in the create-order
 // response -> if it were dropped here it could not be recovered from anywhere.
-export function savePendingPayment({ orderId, clientSecret, publicToken }) {
-  sessionStorage.setItem(KEY, JSON.stringify({ orderId, clientSecret, publicToken }));
+//
+// basketFingerprint records what the basket held when this order was placed (see basketFingerprint
+// in utils/basket.js), so a successful payment only empties the basket if it still matches.
+export function savePendingPayment({ orderId, clientSecret, publicToken, basketFingerprint }) {
+  sessionStorage.setItem(KEY, JSON.stringify({ orderId, clientSecret, publicToken, basketFingerprint }));
 }
 
 export function loadPendingPayment() {

@@ -30,9 +30,16 @@ export default function PaymentPage() {
 
   // The basket is emptied HERE, once Stripe says the payment succeeded, not when the order was
   // created: until then the customer may back out to change something, and the basket is what
-  // they'd come back to. clearBasket is a stable function (see BasketProvider), so listing it in
-  // the effect's dependencies below never re-runs the effect.
-  const { clearBasket } = useBasket();
+  // they'd come back to.
+  //
+  // clearBasketIfUnchanged, not clearBasket: this page can be paying an EARLIER order than the one
+  // the basket now describes (the customer left /pay, added items, then came back with Back/Forward).
+  // The handoff carries a fingerprint of the basket at the moment this order was placed, and the
+  // basket is only emptied if it still matches. Otherwise the new items stay for their next order.
+  // Handoffs saved before this existed have no fingerprint, never match, and so leave the basket be.
+  // It's a stable function (see BasketProvider), so listing it in the effect's dependencies below
+  // never re-runs the effect.
+  const { clearBasketIfUnchanged } = useBasket();
 
   // { status, amount } once Stripe has been asked about this payment; null while that is in flight.
   const [intent, setIntent] = useState(null);
@@ -69,7 +76,7 @@ export default function PaymentPage() {
           clearPendingPayment(); // drop the handoff so a later visit cannot re-offer a paid order
           // The 3D Secure redirect path lands here rather than in handleSuccess below, because the
           // page was reloaded mid-payment, so the basket has to be emptied on this path as well.
-          clearBasket();
+          clearBasketIfUnchanged(pending.basketFingerprint);
 
           // Handoffs written before the confirmation page existed carry no token. Falling through
           // to the local success panel is better than navigating to /order/undefined.
@@ -104,10 +111,10 @@ export default function PaymentPage() {
     return () => {
       ignore = true;
     };
-    // navigate and clearBasket are stable across renders (react-router memoises navigate, and
-    // BasketProvider builds its actions once), so listing them can't retrigger this effect - they
+    // navigate and clearBasketIfUnchanged are stable across renders (react-router memoises navigate,
+    // and BasketProvider builds its actions once), so listing them can't retrigger this effect - they
     // are here to satisfy the exhaustive-deps rule honestly rather than silence it.
-  }, [pending, navigate, clearBasket]); // `pending` is set once and never replaced, so this runs exactly once
+  }, [pending, navigate, clearBasketIfUnchanged]); // `pending` is set once and never replaced, so this runs exactly once
 
   // Called by PaymentForm after a clean confirmation. does NOT tell the API.
   // The order is flipped to Paid by Stripe's webhook calling the server directly.
@@ -116,7 +123,7 @@ export default function PaymentPage() {
 
     // Only a settled payment empties the basket. 'processing' can still fail, and if it does the
     // customer will want their basket back to try again.
-    if (paymentIntent.status === 'succeeded') clearBasket();
+    if (paymentIntent.status === 'succeeded') clearBasketIfUnchanged(pending.basketFingerprint);
 
     // 'processing' also reaches here (an async payment method that hasn't settled). It is NOT a
     // success, so it stays on this page and falls to the processing panel below.

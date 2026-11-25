@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useReducer } from 'react';
 import { BasketContext } from './BasketContext.js';
-import { MAX_LINE_QUANTITY, lineKey, lineTotal } from '../utils/basket.js';
+import { MAX_LINE_QUANTITY, basketFingerprint, lineKey, lineTotal } from '../utils/basket.js';
 
 const STORAGE_KEY = 'takeawayos.basket';
 
@@ -37,6 +37,14 @@ function basketReducer(lines, action) {
 
     case 'clear':
       return [];
+
+    // Empty the basket only if it still holds exactly what was ordered (see basketFingerprint).
+    // Decided HERE, inside the reducer, because the reducer is the one place that always sees the
+    // CURRENT lines. A component deciding it would need `lines` in an effect's dependency array,
+    // re-running the effect on every basket change. Returning the same `lines` array when it
+    // doesn't match means React sees no change and re-renders nothing.
+    case 'clearIfUnchanged':
+      return basketFingerprint(lines) === action.fingerprint ? [] : lines;
 
     default:
       // A typo in an action type would otherwise fail silently by returning the old state.
@@ -79,6 +87,7 @@ export function BasketProvider({ children }) {
       setLineQuantity: (key, quantity) => dispatch({ type: 'setQuantity', key, quantity }),
       removeLine: (key) => dispatch({ type: 'remove', key }),
       clearBasket: () => dispatch({ type: 'clear' }),
+      clearBasketIfUnchanged: (fingerprint) => dispatch({ type: 'clearIfUnchanged', fingerprint }),
     }),
     [],
   );
