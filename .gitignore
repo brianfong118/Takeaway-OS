@@ -433,3 +433,5 @@ appsettings.json
 .env
 .env.local
 .env.*.local
+# Private business planning (repo is public)
+docs/saas-roadmap.md
