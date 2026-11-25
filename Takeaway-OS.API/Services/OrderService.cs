@@ -161,8 +161,28 @@ public class OrderService : IOrderService
             return OrderStatusUpdateResult.InvalidTransition;
 
         order.Status = dto.Status;
-        await _context.SaveChangesAsync();
-        return OrderStatusUpdateResult.Success;
+        return await TrySaveAsync(order)
+            ? OrderStatusUpdateResult.Success
+            : OrderStatusUpdateResult.ConcurrentUpdate;
+    }
+
+    // Saves the order, turning "someone else saved this order since we read it" (the xmin concurrency
+    // token on Order.Version didn't match) into a plain false the caller can map to a 409.
+    // On a conflict the entity is detached so the stale copy can't be saved by a later SaveChanges on
+    // the same context. The expiry job saves many orders through one context, and one conflicting
+    // order would otherwise make every later save in its loop fail too.
+    private async Task<bool> TrySaveAsync(Order order)
+    {
+        try
+        {
+            await _context.SaveChangesAsync();
+            return true;
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            _context.Entry(order).State = EntityState.Detached;
+            return false;
+        }
     }
 
     public async Task<OrderCreateResult> CreateAsync(OrderCreateDto dto, int? applicationUserId)
@@ -375,28 +395,71 @@ public class OrderService : IOrderService
 
         // Cancelling has to reverse the money as well as the status, or a cancelled order would
         // leave the customer charged (Paid) or still able to pay (Pending).
-        // The Stripe call happens BEFORE the status is saved: if it throws, the exception
-        // propagates to a 500 and the order keeps its old status, so "Cancelled" in our database
-        // always means the money really was handled. IsValidTransition only allows Cancelled
-        // from Pending or Paid, so those are the only two cases here.
-        if (dto.Status == OrderStatus.Cancelled)
+        // IsValidTransition only allows Cancelled from Pending or Paid, so those are the only two cases.
+
+        // Paid -> Cancelled with a real payment: CLAIM the cancel first, refund second.
+        // Refunding first and saving second was unsafe: another tablet could save "Preparing" in
+        // between, and then either our save overwrote it (refunded order still cooked) or, with the
+        // concurrency token, our save failed AFTER the money had already gone back. Saving first
+        // means the refund only ever runs once this cancel has definitely won; if someone else
+        // changed the order first, the save fails on the xmin token and no money moves.
+        if (dto.Status == OrderStatus.Cancelled
+            && order.Status == OrderStatus.Paid
+            && order.StripePaymentIntentId is not null) // seeded demo orders never went through Stripe
         {
-            if (order.Status == OrderStatus.Paid)
-            {
-                // A Paid order always has a PaymentIntent, except the seeded demo orders, which
-                // never went through Stripe and so have nothing to refund.
-                if (order.StripePaymentIntentId is not null)
-                    await _stripeService.RefundAsync(order.StripePaymentIntentId, order.Id);
-            }
-            else if (!await VoidPendingPaymentAsync(order))
-            {
-                return OrderStatusUpdateResult.PaymentInProgress;
-            }
+            return await CancelAndRefundAsync(order, order.StripePaymentIntentId);
         }
 
+        // Pending -> Cancelled: void the PaymentIntent BEFORE saving. Voiding is harmless if our save
+        // then loses a race (nobody can pay a cancelled PaymentIntent, so the order can never become
+        // Paid afterwards), and it's what tells us whether the customer paid a moment ago.
+        if (dto.Status == OrderStatus.Cancelled && !await VoidPendingPaymentAsync(order))
+            return OrderStatusUpdateResult.PaymentInProgress;
+
         order.Status = dto.Status;
-        await _context.SaveChangesAsync();
-        return OrderStatusUpdateResult.Success;
+        return await TrySaveAsync(order)
+            ? OrderStatusUpdateResult.Success
+            : OrderStatusUpdateResult.ConcurrentUpdate;
+    }
+
+    // Claim, then refund, then (only if the refund fails) put the order back.
+    private async Task<OrderStatusUpdateResult> CancelAndRefundAsync(Order order, string paymentIntentId)
+    {
+        order.Status = OrderStatus.Cancelled;
+        if (!await TrySaveAsync(order))
+            return OrderStatusUpdateResult.ConcurrentUpdate; // someone else got there first; nothing refunded
+
+        try
+        {
+            await _stripeService.RefundAsync(paymentIntentId);
+            return OrderStatusUpdateResult.Success;
+        }
+        catch (Exception refundError)
+        {
+            // The refund failed (Stripe down, card network error), so the customer still has been
+            // charged. Restore Paid so the order is back on the board and the Owner can retry; the
+            // refund's idempotency key makes that retry safe even if this attempt partly went through.
+            order.Status = OrderStatus.Paid;
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (Exception restoreError)
+            {
+                // Both failed: the order says Cancelled but the customer was NOT refunded. This is the
+                // one state a human must fix by hand, so the exception says exactly that. ASP.NET logs
+                // unhandled exceptions, and the Owner gets a 500 rather than a false success.
+                throw new InvalidOperationException(
+                    $"Refund for order {order.Id} failed AND restoring it to Paid failed: the order is " +
+                    $"Cancelled but the customer was NOT refunded. Refund PaymentIntent {paymentIntentId} " +
+                    "in Stripe and correct the order by hand.",
+                    new AggregateException(refundError, restoreError));
+            }
+
+            // `throw;` (not `throw refundError;`) re-throws the ORIGINAL exception with its original
+            // stack trace, so the 500 and the log point at the Stripe failure itself.
+            throw;
+        }
     }
 
     // Makes a Pending order's payment impossible to complete, so the order can safely be cancelled.
@@ -433,10 +496,11 @@ public class OrderService : IOrderService
             if (!driverExists) return DriverAssignmentResult.DriverNotFound;
         }
 
-        // Covers both directions: a real id assigns, null (owner reassigns) clears 
+        // Covers both directions: a real id assigns, null (owner reassigns) clears
         order.DriverId = dto.DriverId;
-        await _context.SaveChangesAsync();
-        return DriverAssignmentResult.Success;
+        return await TrySaveAsync(order)
+            ? DriverAssignmentResult.Success
+            : DriverAssignmentResult.ConcurrentUpdate; // e.g. it was completed or cancelled a moment ago
     }
 
     // Forward flow only: Pending → Paid → Preparing → Ready → (OutForDelivery →) Completed.
@@ -569,7 +633,11 @@ public class OrderService : IOrderService
     // The webhook's state change, kept here with every other Order status transition.
     // Idempotent by design
     // Deliberately bypasses IsValidTransition -> the one authorized path to Paid.
-    public async Task<OrderPaymentResult> MarkOrderPaidAsync(string paymentIntentId)
+    //
+    // paidAtUtc is when STRIPE recorded the payment (the event's own timestamp), not when the webhook
+    // reached us. The two differ when the server was asleep: Stripe charges the card whether or not
+    // this API is running, and the webhook is what wakes it up.
+    public async Task<OrderPaymentResult> MarkOrderPaidAsync(string paymentIntentId, DateTime paidAtUtc)
     {
         var order = await _context.Orders
             .FirstOrDefaultAsync(o => o.StripePaymentIntentId == paymentIntentId);
@@ -578,61 +646,103 @@ public class OrderService : IOrderService
         if (order.Status == OrderStatus.Paid) return OrderPaymentResult.AlreadyPaid; // duplicate event -> no-op
         if (order.Status != OrderStatus.Pending) return OrderPaymentResult.NotPayable; // e.g. Cancelled -> don't resurrect
 
+        // Backstop for the unpaid-order timeout. PendingOrderExpiryService normally voids an unpaid
+        // PaymentIntent before it can be paid this late, but only while the server is running: on a
+        // host that sleeps when idle (Render's free tier), no expiry pass happens overnight, and a tab
+        // left open at closing time can still pay. The payment then arrives here as the thing that
+        // wakes the server. Rather than put a Paid order on the board hours after it was placed,
+        // refund it and cancel the order, exactly as if the expiry job had been running.
+        // LatePaymentThreshold allows one expiry interval of slack beyond the 30 minutes, so a payment
+        // the running job simply hadn't reached yet is still accepted.
+        if (paidAtUtc - order.CreatedAt > PendingOrderExpiryService.LatePaymentThreshold)
+        {
+            // Refund FIRST, then save. If the save fails, the exception becomes a 500, Stripe resends
+            // the webhook, and the retry refunds again safely (the idempotency key is the
+            // PaymentIntent id) before saving. Nothing else can be competing for this order: it's
+            // Pending, which the Owner never sees, and the expiry job leaves paid ones alone.
+            await _stripeService.RefundAsync(paymentIntentId);
+            order.Status = OrderStatus.Cancelled;
+            await _context.SaveChangesAsync();
+            return OrderPaymentResult.LatePaymentRefunded;
+        }
+
         order.Status = OrderStatus.Paid;
-        // Our clock at the moment the webhook lands, not Stripe's event timestamp: close enough
-        // (webhooks arrive within seconds) and it keeps this method a plain id lookup.
-        order.PaidAt = DateTime.UtcNow;
+        // Stripe's time, for the reason above: on a sleeping server, our clock would make the kitchen
+        // board's "waiting N min" start from when we woke up rather than from when the customer paid.
+        order.PaidAt = paidAtUtc;
+        // A concurrency conflict here propagates as a 500, and Stripe retries the webhook, which then
+        // sees the order's real current state. That retry IS the recovery, so no special handling.
         await _context.SaveChangesAsync();
         return OrderPaymentResult.MarkedPaid;
     }
 
-    // At most this many orders per pass, oldest first, so one pass after a long outage can't make
-    // hundreds of Stripe calls in a row. Anything left over is picked up by the next pass.
+    // How many stale orders one query fetches, and the most one pass will examine in total. The cap
+    // keeps one pass after a long outage from making thousands of Stripe calls in a row; anything
+    // left over is picked up by the next pass.
     private const int ExpiryBatchSize = 50;
+    private const int ExpiryMaxPerPass = 500;
 
     public async Task<PendingOrderExpiryResult> ExpireStalePendingOrdersAsync(DateTime cutoffUtc)
     {
         var result = new PendingOrderExpiryResult();
 
-        var staleOrders = await _context.Orders
-            .Where(o => o.Status == OrderStatus.Pending && o.CreatedAt < cutoffUtc)
-            .OrderBy(o => o.CreatedAt)
-            .Take(ExpiryBatchSize)
-            .ToListAsync();
+        // KEYSET paging: each query asks for orders with an Id greater than the last one seen, rather
+        // than "the oldest 50" every time. The old "oldest 50" query had a trap: orders this pass can't
+        // finish (a Stripe error, or a payment whose webhook never came) stay Pending and are therefore
+        // still the oldest 50 next time. Once 50 such orders existed, every pass picked exactly those
+        // again, and no newer unpaid order was ever expired. Walking forward by Id steps past them.
+        var lastSeenId = 0;
+        var examined = 0;
 
-        foreach (var order in staleOrders)
+        while (examined < ExpiryMaxPerPass)
         {
-            bool voided;
-            try
-            {
-                // The same rule the Owner's cancel uses: make the payment impossible first, and only
-                // then call the order Cancelled.
-                voided = await VoidPendingPaymentAsync(order);
-            }
-            catch (Stripe.StripeException)
-            {
-                // One order's Stripe failure must not stop the rest of the batch. It stays Pending
-                // and is simply retried on the next pass. Only Stripe errors are caught here: a
-                // database error is a different kind of problem and goes up to the job's own handler.
-                result.FailedOrderIds.Add(order.Id);
-                continue;
-            }
+            var batch = await _context.Orders
+                .Where(o => o.Status == OrderStatus.Pending && o.CreatedAt < cutoffUtc && o.Id > lastSeenId)
+                .OrderBy(o => o.Id) // ids are issued in creation order, so this is still oldest first
+                .Take(ExpiryBatchSize)
+                .ToListAsync();
 
-            if (!voided)
+            if (batch.Count == 0) break; // walked past every stale order
+
+            foreach (var order in batch)
             {
-                // The customer paid after all (the webhook is on its way), so this is about to be a
-                // real Paid order. Leave it alone.
-                result.LeftForWebhook++;
-                continue;
+                lastSeenId = order.Id;
+                examined++;
+
+                bool voided;
+                try
+                {
+                    // The same rule the Owner's cancel uses: make the payment impossible first, and
+                    // only then call the order Cancelled.
+                    voided = await VoidPendingPaymentAsync(order);
+                }
+                catch (Stripe.StripeException)
+                {
+                    // One order's Stripe failure must not stop the rest of the pass. It stays Pending
+                    // and is retried on the next pass, without blocking anything newer. Only Stripe
+                    // errors are caught here: a database error goes up to the job's own handler.
+                    result.FailedOrderIds.Add(order.Id);
+                    continue;
+                }
+
+                if (!voided)
+                {
+                    // The customer paid after all (the webhook is on its way), so this is about to be
+                    // a real Paid order. Leave it alone.
+                    result.LeftForWebhook++;
+                    continue;
+                }
+
+                order.Status = OrderStatus.Cancelled;
+
+                // Saved per order rather than once at the end: each PaymentIntent is already cancelled
+                // in Stripe by this point, so recording that immediately means a later failure in the
+                // loop can't leave a voided payment attached to an order that still says Pending.
+                // A concurrency conflict means someone else changed it first (e.g. the Owner cancelled
+                // it); its payment is void either way, so there is nothing more to do for it.
+                if (await TrySaveAsync(order))
+                    result.Expired++;
             }
-
-            order.Status = OrderStatus.Cancelled;
-
-            // Saved per order rather than once at the end: each PaymentIntent is already cancelled in
-            // Stripe by this point, so recording that immediately means a later failure in the loop
-            // can't leave a voided payment attached to an order that still says Pending.
-            await _context.SaveChangesAsync();
-            result.Expired++;
         }
 
         return result;

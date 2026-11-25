@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging.Abstractions;
 using Takeaway_OS.API.Services;
 
 namespace Takeaway_OS.Tests;
@@ -20,7 +21,7 @@ public class StripeServiceTests
             })
             .Build();
 
-        return new StripeService(config);
+        return new StripeService(config, NullLogger<StripeService>.Instance); // NullLogger: a logger that discards everything, since these tests check behaviour, not log output
     }
 
     // Builds the Stripe-Signature header the way Stripe does: HMAC-SHA256 of "<timestamp>.<payload>"

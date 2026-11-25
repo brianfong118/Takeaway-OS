@@ -100,6 +100,14 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<int>
             .Property(o => o.OrderType)
             .HasConversion<string>();
 
+        // IsRowVersion on a uint property is the Npgsql provider's convention for "use the xmin
+        // system column as the concurrency token": Postgres maintains it, EF reads it back after every
+        // save, and the migration creates no column (xmin already exists on every Postgres row).
+        // See Order.Version for why the order row needs one.
+        modelBuilder.Entity<Order>()
+            .Property(o => o.Version)
+            .IsRowVersion();
+
         modelBuilder.Entity<OpeningHours>()
             .Property(oh => oh.DayOfWeek)
             .HasConversion<string>();

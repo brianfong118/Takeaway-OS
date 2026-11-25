@@ -31,13 +31,15 @@ public interface IStripeService
 
     // Refunds a PAID order's payment in full. Used when the Owner cancels an order the customer
     // has already been charged for, so cancelling and refunding are one action, not two.
-    // orderId is used to make the call safe to retry (see the idempotency key in StripeService).
-    // Throws on any Stripe failure, so the caller never marks the order Cancelled while the
-    // customer's money is still taken.
-    Task RefundAsync(string paymentIntentId, int orderId);
+    // Safe to retry: the idempotency key is the PaymentIntent id (see StripeService).
+    // Throws on any Stripe failure, so the caller can put the order back instead of leaving it
+    // Cancelled while the customer's money is still taken. One exception: a PaymentIntent that
+    // doesn't exist in the current Stripe account is logged for a human and treated as done.
+    Task RefundAsync(string paymentIntentId);
 
     // Cancels an UNPAID PaymentIntent so it can never be paid afterwards.
-    // Returns true when the PaymentIntent is now cancelled (including "it already was").
+    // Returns true when the PaymentIntent is now cancelled (including "it already was", and "it
+    // doesn't exist in this Stripe account", which nobody can pay either).
     // Returns false when it can't be cancelled because the money has already been taken or is
     // mid-flight (status succeeded / processing): the customer paid in the moment before the
     // cancel, and the caller must not treat the order as unpaid.

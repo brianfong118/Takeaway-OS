@@ -44,7 +44,7 @@ public class OrderPaymentTests
         var (service, context) = BuildService();
         var order = SeedOrder(context, "pi_123", OrderStatus.Pending);
 
-        var result = await service.MarkOrderPaidAsync("pi_123");
+        var result = await service.MarkOrderPaidAsync("pi_123", DateTime.UtcNow);
 
         Assert.Equal(OrderPaymentResult.MarkedPaid, result);
         Assert.Equal(OrderStatus.Paid, order.Status);
@@ -57,8 +57,8 @@ public class OrderPaymentTests
         var (service, context) = BuildService();
         var order = SeedOrder(context, "pi_123", OrderStatus.Pending);
 
-        var first = await service.MarkOrderPaidAsync("pi_123");   // real payment
-        var second = await service.MarkOrderPaidAsync("pi_123");  // Stripe re-delivering the same event
+        var first = await service.MarkOrderPaidAsync("pi_123", DateTime.UtcNow);   // real payment
+        var second = await service.MarkOrderPaidAsync("pi_123", DateTime.UtcNow);  // Stripe re-delivering the same event
 
         Assert.Equal(OrderPaymentResult.MarkedPaid, first);
         Assert.Equal(OrderPaymentResult.AlreadyPaid, second); // idempotent: the second call changes nothing
@@ -71,7 +71,7 @@ public class OrderPaymentTests
         var (service, context) = BuildService();
         SeedOrder(context, "pi_123", OrderStatus.Pending);
 
-        var result = await service.MarkOrderPaidAsync("pi_does_not_exist");
+        var result = await service.MarkOrderPaidAsync("pi_does_not_exist", DateTime.UtcNow);
 
         Assert.Equal(OrderPaymentResult.OrderNotFound, result);
     }
@@ -82,7 +82,7 @@ public class OrderPaymentTests
         var (service, context) = BuildService();
         var order = SeedOrder(context, "pi_123", OrderStatus.Cancelled);
 
-        var result = await service.MarkOrderPaidAsync("pi_123");
+        var result = await service.MarkOrderPaidAsync("pi_123", DateTime.UtcNow);
 
         Assert.Equal(OrderPaymentResult.NotPayable, result);
         Assert.Equal(OrderStatus.Cancelled, order.Status); // status untouched

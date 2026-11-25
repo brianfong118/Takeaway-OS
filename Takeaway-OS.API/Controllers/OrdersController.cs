@@ -134,9 +134,16 @@ public class OrdersController : ControllerBase
             // 409, not 400: nothing about the request is wrong, the order's real state just moved
             // underneath it. Same meaning 409 has for the closed shop.
             OrderStatusUpdateResult.PaymentInProgress => Conflict($"Order {id} has just been paid. Refresh, then cancel it again to refund the payment."),
+            // Also 409: another device (or the driver, webhook or expiry job) changed the order first.
+            OrderStatusUpdateResult.ConcurrentUpdate => Conflict(ChangedElsewhere(id)),
             _ => NoContent()
         };
     }
+
+    // One wording for every "someone else changed this order first" 409 in this controller.
+    // `static` because it uses nothing from the controller instance, only its argument.
+    private static string ChangedElsewhere(int id) =>
+        $"Order {id} was just changed somewhere else. Refresh to see its current state, then try again.";
 
     // Narrow endpoint for assigning a driver to a delivery order.
     [HttpPut("{id}/driver")]
@@ -151,6 +158,7 @@ public class OrdersController : ControllerBase
             DriverAssignmentResult.DriverNotFound => BadRequest($"Driver {dto.DriverId} does not exist."),
             DriverAssignmentResult.NotDeliveryOrder => BadRequest($"Order {id} is not a delivery order, so it can't have a driver."),
             DriverAssignmentResult.OrderNotActive => BadRequest($"Order {id} is not in progress, so its driver can't be changed."),
+            DriverAssignmentResult.ConcurrentUpdate => Conflict(ChangedElsewhere(id)),
             _ => NoContent()
         };
     }
@@ -171,6 +179,7 @@ public class OrdersController : ControllerBase
             // Not-theirs and not-existent both land here (the service collapses them) -> a driver can't enumerate orders.
             OrderStatusUpdateResult.OrderNotFound => NotFound(),
             OrderStatusUpdateResult.InvalidTransition => BadRequest($"A driver can't change order {id} to status '{dto.Status}'."),
+            OrderStatusUpdateResult.ConcurrentUpdate => Conflict(ChangedElsewhere(id)),
             _ => NoContent()
         };
     }

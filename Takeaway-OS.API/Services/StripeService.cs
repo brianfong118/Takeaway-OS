@@ -5,11 +5,17 @@ namespace Takeaway_OS.API.Services;
 public class StripeService : IStripeService
 {
     private readonly IConfiguration _configuration;
+    private readonly ILogger<StripeService> _logger;
     private const string Currency = "gbp";
 
-    public StripeService(IConfiguration configuration)
+    // Stripe's error code for "no such object in THIS account": the id was created under a different
+    // API key or Stripe account (test vs live, or an account switch). Checked by refund and cancel.
+    private const string ResourceMissing = "resource_missing";
+
+    public StripeService(IConfiguration configuration, ILogger<StripeService> logger)
     {
         _configuration = configuration;
+        _logger = logger;
     }
 
     public async Task<PaymentIntentResult> CreatePaymentIntentAsync(decimal amountInPounds, int orderId)
@@ -55,7 +61,7 @@ public class StripeService : IStripeService
         }
     }
 
-    public async Task RefundAsync(string paymentIntentId, int orderId)
+    public async Task RefundAsync(string paymentIntentId)
     {
         // No Amount set -> Stripe refunds the FULL amount charged. Partial refunds (one wrong item)
         // would be a separate, deliberate feature with its own UI, not a side effect of cancelling.
@@ -66,8 +72,14 @@ public class StripeService : IStripeService
         // It matters here because the refund and the status change are two separate systems: if
         // the refund succeeds but saving "Cancelled" to our database then fails, the Owner presses
         // cancel again, and without the key that second press would try to refund a second time.
-        // One key per ORDER (not per click) is what makes every retry the same request.
-        var requestOptions = new RequestOptions { IdempotencyKey = $"refund-order-{orderId}" };
+        //
+        // Keyed on the PaymentIntent id, NOT the order id. Order ids are only unique inside one
+        // database, and several databases can share one Stripe account (the dev database and the
+        // demo both use the same test account; every shop would, too, once there are several). Two
+        // different "order 52"s would send the same key with a different PaymentIntent, and Stripe
+        // rejects a reused key with different parameters, so cancelling would fail for 24 hours.
+        // A PaymentIntent id is unique across all of Stripe, and is exactly "this one charge".
+        var requestOptions = new RequestOptions { IdempotencyKey = $"refund-{paymentIntentId}" };
 
         try
         {
@@ -80,6 +92,18 @@ public class StripeService : IStripeService
             // the customer either way, which is all this method promises, so it's not an error.
             // `when` is an exception filter: only this one error code is caught; every other
             // StripeException still propagates and stops the cancel.
+        }
+        catch (StripeException ex) when (ex.StripeError?.Code == ResourceMissing)
+        {
+            // The PaymentIntent doesn't exist in the Stripe account the app is using now, typically
+            // because it was created under the previous key (test before go-live, or an old account).
+            // There is nothing this account CAN refund, so retrying would fail forever and the order
+            // could never be cancelled. Let the cancel go ahead, but say loudly that a person has to
+            // check the other account: if the customer was really charged there, refund them by hand.
+            _logger.LogError(
+                "Refund skipped: PaymentIntent {PaymentIntentId} does not exist in the current Stripe account. " +
+                "If this customer was charged under a previous key or account, refund them manually there.",
+                paymentIntentId);
         }
     }
 
@@ -101,6 +125,19 @@ public class StripeService : IStripeService
             //                           leaves the order for the webhook to mark Paid.
             var intent = await service.GetAsync(paymentIntentId);
             return intent.Status == "canceled";
+        }
+        catch (StripeException ex) when (ex.StripeError?.Code == ResourceMissing)
+        {
+            // The PaymentIntent doesn't exist in the current Stripe account (created under an earlier
+            // key or account). Nobody can pay it through THIS account, so as far as this app is
+            // concerned there is nothing left to void, and the order can be cancelled. Without this,
+            // every such order failed on every attempt: the Owner could never cancel it, and the
+            // expiry job retried it forever. Logged as a warning because it's expected after a key
+            // switch, not a fault.
+            _logger.LogWarning(
+                "PaymentIntent {PaymentIntentId} does not exist in the current Stripe account; treating it as void.",
+                paymentIntentId);
+            return true;
         }
     }
 }

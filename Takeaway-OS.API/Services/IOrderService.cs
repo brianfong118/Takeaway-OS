@@ -34,7 +34,11 @@ public enum OrderPaymentResult
     MarkedPaid,     // order was Pending, now Paid
     AlreadyPaid,    // already Paid -> a duplicate webhook delivery, safely ignored (idempotent)
     OrderNotFound,  // no order carries this PaymentIntentId
-    NotPayable      // order exists but isn't Pending (e.g. Cancelled) -> don't overwrite its status
+    NotPayable,     // order exists but isn't Pending (e.g. Cancelled) -> don't overwrite its status
+
+    // Paid long after the unpaid-order timeout (the server was asleep, so the expiry job never voided
+    // it). The payment has been refunded and the order Cancelled instead of reaching the kitchen.
+    LatePaymentRefunded
 }
 
 // UpdateStatusAsync's outcome DOES need an enum: OrderNotFound (404) and
@@ -48,7 +52,11 @@ public enum OrderStatusUpdateResult
     // 409: the Owner cancelled an order that still looked Pending, but Stripe says the customer
     // paid in the last few seconds (the webhook just hasn't arrived yet). Nothing is changed; once
     // the webhook marks it Paid, cancelling again refunds it.
-    PaymentInProgress
+    PaymentInProgress,
+
+    // 409: someone else changed this order between our read and our save (another tablet, the
+    // driver, the webhook or the expiry job). Nothing we wanted was saved, and no money moved.
+    ConcurrentUpdate
 }
 
 // What one pass of ExpireStalePendingOrdersAsync did, so the background job can log it.
@@ -68,7 +76,8 @@ public enum DriverAssignmentResult
     OrderNotFound, // 404: the {id} in the URL names no order
     DriverNotFound, // 400: the URL is fine, but the body points at a driver that doesn't exist
     NotDeliveryOrder, // 400: the order exists but is Collection, so a driver makes no sense on it
-    OrderNotActive    // 400: the order is Pending (unpaid) or already Completed/Cancelled
+    OrderNotActive,   // 400: the order is Pending (unpaid) or already Completed/Cancelled
+    ConcurrentUpdate  // 409: the order changed under us; refresh and try again
 }
 
 public interface IOrderService
@@ -112,7 +121,9 @@ public interface IOrderService
     Task<OrderStatusUpdateResult> UpdateStatusByDriverAsync(int id, int applicationUserId, OrderStatusUpdateDto dto);
 
     // Called ONLY by the Stripe webhook (never a normal status update) to move an order to Paid.
-    Task<OrderPaymentResult> MarkOrderPaidAsync(string paymentIntentId);
+    // paidAtUtc is when Stripe recorded the payment (the event's timestamp), which may be well before
+    // the webhook arrives if the server was asleep. A payment recorded too late is refunded, not accepted.
+    Task<OrderPaymentResult> MarkOrderPaidAsync(string paymentIntentId, DateTime paidAtUtc);
 
     // Called ONLY by PendingOrderExpiryService. Cancels orders still Pending that were created before
     // cutoffUtc, voiding each one's PaymentIntent first so a forgotten tab can't pay for it later.

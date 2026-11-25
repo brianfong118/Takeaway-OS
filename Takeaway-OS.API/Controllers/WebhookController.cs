@@ -53,7 +53,11 @@ public class WebhooksController : ControllerBase
         if (stripeEvent.Type == EventTypes.PaymentIntentSucceeded)
         {
             var paymentIntent = (PaymentIntent)stripeEvent.Data.Object;
-            var result = await _orderService.MarkOrderPaidAsync(paymentIntent.Id);
+
+            // stripeEvent.Created is when Stripe recorded the payment (UTC), which is earlier than
+            // "now" whenever this webhook had to wake a sleeping server or was retried. The service
+            // uses it to spot a payment made after the unpaid-order timeout, and as the order's PaidAt.
+            var result = await _orderService.MarkOrderPaidAsync(paymentIntent.Id, stripeEvent.Created);
 
             // All outcomes return 200 -> the event was received and handled 
             // but log the odd ones, since they signal a data mismatch worth a human looking at.
@@ -64,6 +68,9 @@ public class WebhooksController : ControllerBase
                     break;
                 case OrderPaymentResult.NotPayable:
                     _logger.LogWarning("Stripe payment {PaymentIntentId} succeeded for an order that isn't Pending (may need a manual refund).", paymentIntent.Id);
+                    break;
+                case OrderPaymentResult.LatePaymentRefunded:
+                    _logger.LogWarning("Stripe payment {PaymentIntentId} arrived after the unpaid-order timeout; it was refunded and the order cancelled.", paymentIntent.Id);
                     break;
             }
         }

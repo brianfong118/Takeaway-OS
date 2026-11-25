@@ -72,5 +72,16 @@ public class Order
     // which is also what makes duplicate webhook deliveries safe (idempotent) to process.
     public string? StripePaymentIntentId { get; set; }
 
+    // Optimistic concurrency token, mapped to Postgres's built-in "xmin" system column (configured in
+    // AppDbContext). Postgres changes xmin every time the row is updated, so it works as a version
+    // number we never have to maintain ourselves, and it adds no real column to the table.
+    //
+    // EF includes the value it loaded in the WHERE clause of every UPDATE to this row
+    // ("... WHERE Id = 7 AND xmin = 1234"). If someone else saved the order in between, xmin has moved
+    // on, the UPDATE matches no row, and EF throws DbUpdateConcurrencyException instead of silently
+    // overwriting their change. Without it, two tablets acting on the same order at once was "last
+    // write wins", which could leave an order refunded AND still being cooked.
+    public uint Version { get; set; }
+
     public ICollection<OrderItem> OrderItems { get; set; } = new List<OrderItem>();
 }

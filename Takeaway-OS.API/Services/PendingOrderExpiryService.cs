@@ -20,6 +20,18 @@ public class PendingOrderExpiryService : BackgroundService
     // How often to look. An order can therefore live up to UnpaidTimeout + CheckInterval, which is fine.
     private static readonly TimeSpan CheckInterval = TimeSpan.FromMinutes(5);
 
+    // A payment Stripe recorded later than this after the order was placed is one the running job
+    // would already have voided, so it can only have got through because the server was asleep.
+    // OrderService.MarkOrderPaidAsync refunds such a payment instead of accepting it. The extra
+    // CheckInterval is the slack for a payment the job simply hadn't reached yet, which is accepted.
+    internal static readonly TimeSpan LatePaymentThreshold = UnpaidTimeout + CheckInterval;
+
+    // How long after startup the first pass runs. Not zero, so the integration tests (which boot the
+    // app for a few seconds and reset the in-memory database while doing so) finish before a pass
+    // could touch it; short, so a server that wakes from sleep clears its backlog within a minute
+    // instead of waiting a full CheckInterval.
+    private static readonly TimeSpan StartupDelay = TimeSpan.FromSeconds(30);
+
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<PendingOrderExpiryService> _logger;
 
@@ -35,27 +47,39 @@ public class PendingOrderExpiryService : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        // A first pass shortly after startup, not one CheckInterval later. On a host that sleeps when
+        // idle, every wake-up is a startup, and waiting a full interval would leave a whole night's
+        // abandoned orders payable for 5 more minutes. Task.Delay with the stopping token throws
+        // OperationCanceledException if the app shuts down during the wait, which simply ends this
+        // method, the normal way a BackgroundService stops.
+        await Task.Delay(StartupDelay, stoppingToken);
+        await RunPassAsync();
+
         // PeriodicTimer ticks every CheckInterval. WaitForNextTickAsync waits for the next tick and
         // returns true, or throws OperationCanceledException once the app starts shutting down, which
         // ends the loop and the method. Unlike System.Timers.Timer it never runs two passes at once:
         // a slow pass just delays the next tick instead of overlapping it.
-        // The first pass runs one interval AFTER startup, not immediately, so app start-up (and the
-        // integration tests, which boot the app for a second or two) never trigger Stripe calls.
         using var timer = new PeriodicTimer(CheckInterval);
 
         while (await timer.WaitForNextTickAsync(stoppingToken))
         {
-            try
-            {
-                await ExpireOnceAsync();
-            }
-            catch (Exception ex)
-            {
-                // Catch EVERYTHING here. An exception escaping ExecuteAsync stops the whole app by
-                // default (.NET 8+), and a database blip at 3am must not take ordering down with it.
-                // The next tick simply tries again.
-                _logger.LogError(ex, "Expiring unpaid orders failed; retrying on the next pass.");
-            }
+            await RunPassAsync();
+        }
+    }
+
+    // One pass, with every failure caught.
+    private async Task RunPassAsync()
+    {
+        try
+        {
+            await ExpireOnceAsync();
+        }
+        catch (Exception ex)
+        {
+            // Catch EVERYTHING here. An exception escaping ExecuteAsync stops the whole app by
+            // default (.NET 8+), and a database blip at 3am must not take ordering down with it.
+            // The next tick simply tries again.
+            _logger.LogError(ex, "Expiring unpaid orders failed; retrying on the next pass.");
         }
     }
 

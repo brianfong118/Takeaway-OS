@@ -26,6 +26,10 @@ internal sealed class FakeStripeService : IStripeService
     // Simulates Stripe being unreachable when cancelling: CancelPaymentIntentAsync throws.
     public bool FailCancels { get; set; }
 
+    // The same failure, but only for these PaymentIntents, so a test can mix orders that keep failing
+    // with orders that work (e.g. to prove stuck orders don't block newer ones).
+    public HashSet<string> FailCancelsFor { get; } = new();
+
     public Task<PaymentIntentResult> CreatePaymentIntentAsync(decimal amountInPounds, int orderId)
     {
         ChargedAmounts.Add(amountInPounds);
@@ -39,7 +43,7 @@ internal sealed class FakeStripeService : IStripeService
     // Signature checking has its own tests against the real StripeService (StripeServiceTests).
     public Event? ConstructEvent(string json, string signatureHeader) => throw new NotSupportedException();
 
-    public Task RefundAsync(string paymentIntentId, int orderId)
+    public Task RefundAsync(string paymentIntentId)
     {
         if (FailRefunds) throw new StripeException("Simulated Stripe failure");
 
@@ -49,7 +53,7 @@ internal sealed class FakeStripeService : IStripeService
 
     public Task<bool> CancelPaymentIntentAsync(string paymentIntentId)
     {
-        if (FailCancels) throw new StripeException("Simulated Stripe failure");
+        if (FailCancels || FailCancelsFor.Contains(paymentIntentId)) throw new StripeException("Simulated Stripe failure");
         if (PaymentAlreadyTaken) return Task.FromResult(false);
 
         CancelledPaymentIntents.Add(paymentIntentId);
